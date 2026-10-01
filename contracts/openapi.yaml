@@ -1,0 +1,466 @@
+openapi: 3.1.0
+info:
+  title: Collaborative Code Editor API contract
+  version: 0.1.0
+  description: >-
+    Phase 01 implements health, identity, projects, memberships, and invitations.
+    Tree, collaboration, checkpoints, runs, and search remain reserved for later phases.
+servers:
+  - url: /
+    description: Same origin through web reverse proxy
+tags:
+  - name: foundation
+  - name: identity
+  - name: projects
+  - name: tree
+  - name: checkpoints
+  - name: runs
+  - name: search
+paths:
+  /api/v1/healthz:
+    get:
+      tags: [foundation]
+      summary: Process liveness (Phase 01)
+      responses:
+        '200':
+          description: Process is serving HTTP; does not assert database readiness
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status, service, phase]
+                properties:
+                  status: { const: ok }
+                  service: { const: api }
+                  phase: { const: '01' }
+  /api/v1/auth/github/start:
+    get:
+      tags: [identity]
+      x-implementation-phase: '01'
+      summary: Begin GitHub.com OAuth with one-use state and PKCE
+      responses:
+        '302': { description: Redirect to GitHub authorization endpoint }
+  /api/v1/auth/config:
+    get:
+      tags: [identity]
+      x-implementation-phase: '01'
+      summary: Public login availability without exposing credentials
+      responses:
+        '200':
+          description: GitHub sign-in configuration state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [github_enabled]
+                properties:
+                  github_enabled: { type: boolean }
+  /api/v1/auth/github/callback:
+    get:
+      tags: [identity]
+      x-implementation-phase: '01'
+      summary: Exact OAuth callback; issue HttpOnly app session
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        '302': { description: Authenticated redirect }
+        '400': { $ref: '#/components/responses/Error' }
+  /api/v1/session:
+    get:
+      tags: [identity]
+      x-implementation-phase: '01'
+      summary: Get current authenticated user and CSRF token
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [user, csrf_token]
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  csrf_token: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [identity]
+      x-implementation-phase: '01'
+      summary: Revoke current session and clear cookie
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '204': { description: Logged out }
+  /api/v1/projects:
+    get:
+      tags: [projects]
+      x-implementation-phase: '01'
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Projects visible to user
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Project' }
+    post:
+      tags: [projects]
+      x-implementation-phase: '01'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/v1/projects/{project_id}:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    get:
+      tags: [projects]
+      x-implementation-phase: '01'
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Project
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '403': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [projects]
+      x-implementation-phase: '01'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '204': { description: Deleted by owner }
+        '403': { $ref: '#/components/responses/Error' }
+  /api/v1/projects/{project_id}/members:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    get:
+      tags: [projects]
+      x-implementation-phase: '01'
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { description: Authorized member list }
+  /api/v1/projects/{project_id}/members/{user_id}:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [projects]
+      x-implementation-phase: '01'
+      summary: Owner changes editor/viewer role
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: { type: string, enum: [editor, viewer] }
+      responses:
+        '200': { description: Updated member }
+        '403': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [projects]
+      x-implementation-phase: '01'
+      summary: Owner revokes member
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '204': { description: Revoked }
+        '403': { $ref: '#/components/responses/Error' }
+  /api/v1/projects/{project_id}/invites:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    post:
+      tags: [projects]
+      x-implementation-phase: '01'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role, expires_at, max_uses]
+              properties:
+                role: { type: string, enum: [editor, viewer] }
+                expires_at: { type: string, format: date-time }
+                max_uses: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '201': { description: One-time plaintext invite token returned to owner }
+        '403': { $ref: '#/components/responses/Error' }
+  /api/v1/projects/{project_id}/invites/{invite_id}:
+    delete:
+      tags: [projects]
+      x-implementation-phase: '01'
+      summary: Owner revokes an invitation
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: invite_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Invitation revoked }
+        '403': { $ref: '#/components/responses/Error' }
+  /api/v1/invites/{token}/accept:
+    post:
+      tags: [projects]
+      x-implementation-phase: '01'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Membership accepted transactionally }
+        '409': { $ref: '#/components/responses/Error' }
+  /api/v1/projects/{project_id}/tree:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    get:
+      tags: [tree]
+      x-implementation-phase: '02'
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { description: Active tree with decimal tree_version and event_sequence }
+    post:
+      tags: [tree]
+      x-implementation-phase: '02'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters: [{ $ref: '#/components/parameters/IfMatch' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTreeEntry' }
+      responses:
+        '201': { description: Created file/folder with new tree version }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/projects/{project_id}/tree/{file_id}:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/FileId' }
+    patch:
+      tags: [tree]
+      x-implementation-phase: '02'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters: [{ $ref: '#/components/parameters/IfMatch' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                parent_id: { type: [string, 'null'], format: uuid }
+      responses:
+        '200': { description: Renamed/moved entry and new version }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [tree]
+      x-implementation-phase: '02'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters: [{ $ref: '#/components/parameters/IfMatch' }]
+      responses:
+        '204': { description: Bounded subtree tombstoned }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/projects/{project_id}/checkpoints:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    get:
+      tags: [checkpoints]
+      x-implementation-phase: '06'
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { description: Authorized checkpoint list and states }
+    post:
+      tags: [checkpoints]
+      x-implementation-phase: '06'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+      responses:
+        '202': { description: Captured checkpoint cut; materialization pending }
+  /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}:
+    get:
+      tags: [checkpoints]
+      x-implementation-phase: '06'
+      summary: Preview authorized ready checkpoint manifest and file cut
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: checkpoint_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Authorized checkpoint metadata and captured file list }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/restore:
+    post:
+      tags: [checkpoints]
+      x-implementation-phase: '06'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: checkpoint_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/IfMatch' }
+      responses:
+        '200': { description: New generation and tree version }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/projects/{project_id}/runs:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    post:
+      tags: [runs]
+      x-implementation-phase: '07'
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [runtime, entrypoint, stdin]
+              properties:
+                runtime: { type: string, enum: [python, javascript] }
+                entrypoint: { type: string, minLength: 1, maxLength: 1024 }
+                stdin: { type: string, maxLength: 16384 }
+      responses:
+        '202': { description: Capturing immutable input }
+        '403': { $ref: '#/components/responses/Error' }
+  /api/v1/projects/{project_id}/runs/{run_id}:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [runs]
+      x-implementation-phase: '07'
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { description: Authorized immutable input checkpoint, status and exit metadata }
+    delete:
+      tags: [runs]
+      x-implementation-phase: '07'
+      summary: Request cancellation; terminal jobs remain terminal
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '202': { description: Cancellation requested }
+  /api/v1/projects/{project_id}/runs/{run_id}/events:
+    get:
+      tags: [runs]
+      x-implementation-phase: '07'
+      summary: Authorized ordered output/status stream with resumable sequence
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: after, in: query, required: false, schema: { $ref: '#/components/schemas/DecimalSequence' } }
+      responses:
+        '200':
+          description: SSE events with decimal IDs and bounded stdout/stderr/status payloads
+          content:
+            text/event-stream:
+              schema: { type: string }
+  /api/v1/projects/{project_id}/search:
+    get:
+      tags: [search]
+      x-implementation-phase: '08'
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 200 } }
+      responses:
+        '200':
+          description: Versioned authorized results; may lag committed edits
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SearchResult' }
+components:
+  securitySchemes:
+    sessionCookie: { type: apiKey, in: cookie, name: cce_session }
+    csrfHeader: { type: apiKey, in: header, name: X-CSRF-Token }
+  parameters:
+    ProjectId: { name: project_id, in: path, required: true, schema: { type: string, format: uuid } }
+    FileId: { name: file_id, in: path, required: true, schema: { type: string, format: uuid } }
+    IfMatch: { name: If-Match, in: header, required: true, schema: { $ref: '#/components/schemas/DecimalSequence' } }
+  schemas:
+    DecimalSequence: { type: string, pattern: '^(0|[1-9][0-9]*)$' }
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, display_name]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string }
+    Project:
+      type: object
+      additionalProperties: false
+      required: [id, name, role, tree_version, event_sequence]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        role: { type: string, enum: [owner, editor, viewer] }
+        tree_version: { $ref: '#/components/schemas/DecimalSequence' }
+        event_sequence: { $ref: '#/components/schemas/DecimalSequence' }
+    CreateTreeEntry:
+      type: object
+      additionalProperties: false
+      required: [kind, name]
+      properties:
+        kind: { type: string, enum: [file, folder] }
+        name: { type: string, minLength: 1, maxLength: 255 }
+        parent_id: { type: [string, 'null'], format: uuid }
+        language: { type: string }
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        current_version: { $ref: '#/components/schemas/DecimalSequence' }
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required: [file_id, document_id, through_sequence, path, snippet]
+      properties:
+        file_id: { type: string, format: uuid }
+        document_id: { type: string, format: uuid }
+        through_sequence: { $ref: '#/components/schemas/DecimalSequence' }
+        path: { type: string }
+        snippet: { type: string }
+  responses:
+    Error:
+      description: Typed safe error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Stale version or conflicting operation; includes current_version
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

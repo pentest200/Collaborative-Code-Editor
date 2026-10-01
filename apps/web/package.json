@@ -1,0 +1,27 @@
+{
+  "name": "@cce/web",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint src next.config.ts"
+  },
+  "dependencies": {
+    "monaco-editor": "0.52.2",
+    "next": "16.3.8",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "y-monaco": "0.1.6",
+    "yjs": "13.6.27"
+  },
+  "devDependencies": {
+    "@types/node": "24.5.2",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@biomejs/biome": "2.5.15",
+    "typescript": "5.9.3"
+  }
+}

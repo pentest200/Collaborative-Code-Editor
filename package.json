@@ -1,0 +1,26 @@
+{
+  "name": "collaborative-code-editor",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "apps/web",
+    "services/collab",
+    "packages/protocol"
+  ],
+  "engines": {
+    "node": ">=22.15 <27"
+  },
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "check:contracts": "node scripts/check-contracts.mjs",
+    "dev:web": "npm run dev -w @cce/web",
+    "dev:collab": "npm run dev -w @cce/collab"
+  },
+  "devDependencies": {
+    "eslint": "10.11.0",
+    "yaml": "2.8.1"
+  }
+}

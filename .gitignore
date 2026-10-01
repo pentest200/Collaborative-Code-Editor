@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.DS_Store
+*.log
+.npm-cache/
+.go-cache/
+.gopath/
+.tools/
+go1.27.1.windows-amd64.zip
