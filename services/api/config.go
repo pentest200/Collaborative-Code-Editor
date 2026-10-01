@@ -19,6 +19,8 @@ type Config struct {
 	GitHubTokenURL string
 	GitHubUserURL  string
 	SecureCookies  bool
+	CollabOrigin   string
+	CollabToken    string
 }
 
 func loadConfig() (Config, error) {
@@ -32,12 +34,24 @@ func loadConfig() (Config, error) {
 		GitHubAuthURL:  "https://github.com/login/oauth/authorize",
 		GitHubTokenURL: "https://github.com/login/oauth/access_token",
 		GitHubUserURL:  "https://api.github.com/user",
+		CollabOrigin:   envOr("COLLAB_INTERNAL_ORIGIN", "http://127.0.0.1:8081"),
+		CollabToken:    os.Getenv("COLLAB_INTERNAL_TOKEN"),
 	}
 	if c.Environment != "development" && c.Environment != "production" {
 		return c, errors.New("APP_ENV must be development or production")
 	}
 	if c.DatabaseURL == "" {
 		return c, errors.New("DATABASE_URL is required")
+	}
+	if c.CollabToken == "" {
+		if c.Environment == "production" {
+			return c, errors.New("COLLAB_INTERNAL_TOKEN is required in production")
+		}
+		c.CollabToken = "cce_dev_internal_only"
+	}
+	internal, err := url.Parse(c.CollabOrigin)
+	if err != nil || internal.Scheme != "http" || internal.Host == "" || internal.Path != "" || internal.RawQuery != "" || internal.User != nil {
+		return c, errors.New("COLLAB_INTERNAL_ORIGIN must be an internal HTTP origin")
 	}
 	u, err := url.Parse(c.PublicOrigin)
 	if err != nil || u.Host == "" || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil || strings.HasSuffix(c.PublicOrigin, "/") {

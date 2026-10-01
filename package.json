@@ -16,11 +16,13 @@
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces --if-present",
     "check:contracts": "node scripts/check-contracts.mjs",
+    "test:workspace": "node --test tests/e2e/workspace.test.mjs",
     "dev:web": "npm run dev -w @cce/web",
     "dev:collab": "npm run dev -w @cce/collab"
   },
   "devDependencies": {
     "eslint": "10.11.0",
+    "playwright-core": "1.63.0",
     "yaml": "2.8.1"
   }
 }

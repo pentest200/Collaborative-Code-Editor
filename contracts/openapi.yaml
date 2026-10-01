@@ -3,8 +3,8 @@ info:
   title: Collaborative Code Editor API contract
   version: 0.1.0
   description: >-
-    Phase 01 implements health, identity, projects, memberships, and invitations.
-    Tree, collaboration, checkpoints, runs, and search remain reserved for later phases.
+    Phase 02 implements health, identity, projects, memberships, invitations, and file-tree metadata.
+    Source editing, realtime collaboration, checkpoints, runs, and search remain reserved for later phases.
 servers:
   - url: /
     description: Same origin through web reverse proxy
@@ -20,7 +20,7 @@ paths:
   /api/v1/healthz:
     get:
       tags: [foundation]
-      summary: Process liveness (Phase 01)
+      summary: Process liveness (Phase 02)
       responses:
         '200':
           description: Process is serving HTTP; does not assert database readiness
@@ -33,7 +33,7 @@ paths:
                 properties:
                   status: { const: ok }
                   service: { const: api }
-                  phase: { const: '01' }
+                  phase: { const: '02' }
   /api/v1/auth/github/start:
     get:
       tags: [identity]
@@ -234,7 +234,11 @@ paths:
       x-implementation-phase: '02'
       security: [{ sessionCookie: [] }]
       responses:
-        '200': { description: Active tree with decimal tree_version and event_sequence }
+        '200':
+          description: Active tree with decimal tree_version and event_sequence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tree' }
     post:
       tags: [tree]
       x-implementation-phase: '02'
@@ -246,8 +250,13 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/CreateTreeEntry' }
       responses:
-        '201': { description: Created file/folder with new tree version }
+        '201':
+          description: Created file/folder and initial Yjs document snapshot for a file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TreeMutation' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '428': { $ref: '#/components/responses/Error' }
   /api/v1/projects/{project_id}/tree/{file_id}:
     parameters:
       - { $ref: '#/components/parameters/ProjectId' }
@@ -269,16 +278,22 @@ paths:
                 name: { type: string, minLength: 1, maxLength: 255 }
                 parent_id: { type: [string, 'null'], format: uuid }
       responses:
-        '200': { description: Renamed/moved entry and new version }
+        '200':
+          description: Renamed/moved entry and new version; file and document identity are preserved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TreeMutation' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '428': { $ref: '#/components/responses/Error' }
     delete:
       tags: [tree]
       x-implementation-phase: '02'
       security: [{ sessionCookie: [], csrfHeader: [] }]
       parameters: [{ $ref: '#/components/parameters/IfMatch' }]
       responses:
-        '204': { description: Bounded subtree tombstoned }
+        '204': { description: Bounded subtree tombstoned; new version in ETag header }
         '409': { $ref: '#/components/responses/Conflict' }
+        '428': { $ref: '#/components/responses/Error' }
   /api/v1/projects/{project_id}/checkpoints:
     parameters: [{ $ref: '#/components/parameters/ProjectId' }]
     get:
@@ -435,6 +450,36 @@ components:
         name: { type: string, minLength: 1, maxLength: 255 }
         parent_id: { type: [string, 'null'], format: uuid }
         language: { type: string }
+    TreeEntry:
+      type: object
+      additionalProperties: false
+      required: [id, parent_id, name, kind, language, document_id, generation]
+      properties:
+        id: { type: string, format: uuid }
+        parent_id: { type: [string, 'null'], format: uuid }
+        name: { type: string, minLength: 1, maxLength: 255 }
+        kind: { type: string, enum: [file, folder] }
+        language: { type: [string, 'null'] }
+        document_id: { type: [string, 'null'], format: uuid }
+        generation: { $ref: '#/components/schemas/DecimalSequence' }
+    Tree:
+      type: object
+      additionalProperties: false
+      required: [tree_version, event_sequence, entries]
+      properties:
+        tree_version: { $ref: '#/components/schemas/DecimalSequence' }
+        event_sequence: { $ref: '#/components/schemas/DecimalSequence' }
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/TreeEntry' }
+    TreeMutation:
+      type: object
+      additionalProperties: false
+      required: [entry, tree_version, event_sequence]
+      properties:
+        entry: { $ref: '#/components/schemas/TreeEntry' }
+        tree_version: { $ref: '#/components/schemas/DecimalSequence' }
+        event_sequence: { $ref: '#/components/schemas/DecimalSequence' }
     Error:
       type: object
       additionalProperties: false

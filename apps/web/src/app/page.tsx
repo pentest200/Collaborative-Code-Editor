@@ -68,13 +68,13 @@ export default function Home() {
 
   return <main className="page">
     <header className="topbar"><Link href="/" className="brand">Collaborative Code Editor</Link><span>Projects</span></header>
-    <section className="hero"><p className="eyebrow">Your workspace</p><h1>Build together.</h1><p className="lede">Sign in with GitHub to create a project and manage your team. The shared editor arrives in the next phase.</p></section>
+    <section className="hero"><p className="eyebrow">Your workspace</p><h1>Build together.</h1><p className="lede">Sign in with GitHub to organize project files and manage your team. Live editing is coming later.</p></section>
     {loading ? <p role="status">Checking your session…</p> : session ? <>
       <div className="section-heading"><div><h2>Your projects</h2><p>Signed in as {session.user.display_name}</p></div><button type="button" className="quiet" onClick={signOut} disabled={busy}>Sign out</button></div>
       <form onSubmit={createProject} className="panel"><label htmlFor="project-name">New project</label><div className="form-row"><input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} placeholder="Project name" required /><button type="submit" disabled={busy || !name.trim()}>Create project</button></div></form>
-      {projects.length ? <ul className="project-grid">{projects.map((project) => <li key={project.id}><Link href={`/projects/${project.id}`} className="project-card"><span className="project-mark">{project.name.slice(0, 1).toUpperCase()}</span><span><strong>{project.name}</strong><small>{project.role}</small></span><span className="arrow" aria-hidden="true">↗</span></Link></li>)}</ul> : <div className="panel">No projects yet. Create one to invite your team.</div>}
+      {projects.length ? <ul className="project-grid">{projects.map((project) => <li key={project.id}><Link href={`/projects/${project.id}/workspace`} className="project-card"><span className="project-mark">{project.name.slice(0, 1).toUpperCase()}</span><span><strong>{project.name}</strong><small>{project.role}</small></span><span className="arrow" aria-hidden="true">↗</span></Link></li>)}</ul> : <div className="panel">No projects yet. Create one to invite your team.</div>}
     </> : <div className="panel login"><h2>Start with your GitHub account</h2><p>Projects are private to their members.</p>{authEnabled === true ? <a className="button-link" href="/api/v1/auth/github/start">Sign in with GitHub</a> : <p>{authEnabled === false ? "GitHub sign-in is not configured in this environment." : "Login availability could not be checked."}</p>}</div>}
     {error && <p role="alert" className="error">{error}</p>}
-    <footer>Editing, collaboration, checkpoints, and runs are not available yet.</footer>
+    <footer>File organization and read-only code previews are available. Editing, collaboration, checkpoints, and runs are not available yet.</footer>
   </main>;
 }

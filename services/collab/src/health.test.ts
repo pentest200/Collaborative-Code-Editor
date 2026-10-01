@@ -13,7 +13,7 @@ test("private health route reports liveness, other routes stay closed", async ()
     const origin = `http://127.0.0.1:${address.port}`;
     const health = await fetch(`${origin}/internal/healthz`);
     assert.equal(health.status, 200);
-    assert.deepEqual(await health.json(), { status: "ok", service: "collab", phase: "00" });
+    assert.deepEqual(await health.json(), { status: "ok", service: "collab", phase: "02" });
     const other = await fetch(`${origin}/rooms`);
     assert.equal(other.status, 404);
   } finally {

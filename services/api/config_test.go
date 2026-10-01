@@ -39,6 +39,7 @@ func TestUnsafeAuthConfigurationRejected(t *testing.T) {
 	t.Setenv("PUBLIC_ORIGIN", "http://example.com")
 	t.Setenv("GITHUB_CLIENT_ID", "id")
 	t.Setenv("GITHUB_CLIENT_SECRET", "secret")
+	t.Setenv("COLLAB_INTERNAL_TOKEN", "fixture-internal-token")
 	if _, err := loadConfig(); err == nil {
 		t.Fatal("production accepted HTTP origin")
 	}

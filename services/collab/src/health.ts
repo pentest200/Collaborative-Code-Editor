@@ -6,5 +6,5 @@ export const healthHandler: RequestListener = (request, response) => {
     return;
   }
   response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
-  response.end(JSON.stringify({ status: "ok", service: "collab", phase: "00" }));
+  response.end(JSON.stringify({ status: "ok", service: "collab", phase: "02" }));
 };

@@ -11,4 +11,5 @@ coverage/
 .go-cache/
 .gopath/
 .tools/
+.tmp/
 go1.27.1.windows-amd64.zip
