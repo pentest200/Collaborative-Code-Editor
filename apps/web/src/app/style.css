@@ -124,3 +124,12 @@ footer { border-top: 1px solid #2b3544; color: #a9b5c7; margin-top: 3rem; paddin
 .draft-recovery { margin: 8px 0; }
 .draft-recovery [role=dialog] { position: fixed; z-index: 50; inset: 15% 15%; overflow: auto; padding: 24px; background: #172231; border: 1px solid #526b91; border-radius: 8px; }
 .draft-recovery li { margin: 12px 0; }
+.checkpoint-panel { width: 340px; max-width: 100%; flex: 0 0 340px; overflow: auto; padding: 18px; background: #111820; border-left: 1px solid #2d3745; color: #e1e7ef; }
+.checkpoint-heading { display: flex; align-items: center; justify-content: space-between; }
+.checkpoint-panel form { display: grid; gap: 8px; }
+.checkpoint-panel ul { list-style: none; padding: 0; }
+.checkpoint-panel li { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-bottom: 1px solid #2d3745; }
+.checkpoint-panel li strong { flex: 1 1 100%; }
+.checkpoint-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; background: #080d13; padding: 12px; }
+.checkpoint-panel section a { margin-left: 8px; }
+@media (max-width: 800px) { .checkpoint-panel { position: fixed; top: 58px; bottom: 32px; right: 0; z-index: 15; box-shadow: -4px 0 20px #0008; } }

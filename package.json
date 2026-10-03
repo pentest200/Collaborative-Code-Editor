@@ -19,6 +19,7 @@
     "test:workspace": "node --test tests/e2e/workspace.test.mjs",
     "test:realtime": "node --test tests/e2e/realtime.test.mjs",
     "test:recovery": "node --test tests/e2e/recovery.test.mjs",
+    "test:checkpoints": "node --test tests/e2e/checkpoints.test.mjs",
     "dev:web": "npm run dev -w @cce/web",
     "dev:collab": "npm run dev -w @cce/collab"
   },

@@ -16,7 +16,7 @@ Every reconnect fetches the current session, project role and file tree with no-
 
 A separate committed replica is synchronized before replay. Original outbox IDs/hash/bytes are replayed sequentially with approximately 40 ms send spacing. Lost ACKs close/reconnect and resolve the original receipt. Comparing both state-vector structs and delete-set coverage against committed state plus pending entries detects missing retained changes; a bounded reconciliation delta is identified and persisted before submission. Deltas over 512 KiB stop with retained state/export; bytes are never truncated.
 
-Session expiration, role denial and deleted/replaced generations stop replay and freeze the record. Restored source will use a different document/generation key. The adapter cannot move an old outbox to that key. Recover drafts exports the old generation separately. Phase 06 checkpoint restoration itself is still unfinished; Phase 05 tests replace/tombstone metadata transactionally to establish this boundary.
+Session expiration, role denial and deleted/replaced generations stop replay and freeze the record. Phase 06 restore uses a fresh document/generation key and project event to rebind connected clients. The adapter cannot move an old outbox to that key. Recover drafts exports the old generation separately. Phase 05's synthetic metadata tests established this boundary; Phase 06 adds actual checkpoint restore and offline reconnect acceptance.
 
 ## Account privacy and lifecycle
 

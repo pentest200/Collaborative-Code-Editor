@@ -8,34 +8,42 @@ import (
 )
 
 type Config struct {
-	Environment    string
-	ListenAddr     string
-	DatabaseURL    string
-	PublicOrigin   string
-	CallbackURL    string
-	ClientID       string
-	ClientSecret   string
-	GitHubAuthURL  string
-	GitHubTokenURL string
-	GitHubUserURL  string
-	SecureCookies  bool
-	CollabOrigin   string
-	CollabToken    string
+	Environment       string
+	ListenAddr        string
+	DatabaseURL       string
+	PublicOrigin      string
+	CallbackURL       string
+	ClientID          string
+	ClientSecret      string
+	GitHubAuthURL     string
+	GitHubTokenURL    string
+	GitHubUserURL     string
+	SecureCookies     bool
+	CollabOrigin      string
+	CollabToken       string
+	ArtifactEndpoint  string
+	ArtifactAccessKey string
+	ArtifactSecretKey string
+	ArtifactBucket    string
 }
 
 func loadConfig() (Config, error) {
 	c := Config{
-		Environment:    os.Getenv("APP_ENV"),
-		ListenAddr:     envOr("API_LISTEN_ADDR", "127.0.0.1:8080"),
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		PublicOrigin:   envOr("PUBLIC_ORIGIN", "http://localhost:3000"),
-		ClientID:       os.Getenv("GITHUB_CLIENT_ID"),
-		ClientSecret:   os.Getenv("GITHUB_CLIENT_SECRET"),
-		GitHubAuthURL:  "https://github.com/login/oauth/authorize",
-		GitHubTokenURL: "https://github.com/login/oauth/access_token",
-		GitHubUserURL:  "https://api.github.com/user",
-		CollabOrigin:   envOr("COLLAB_INTERNAL_ORIGIN", "http://127.0.0.1:8081"),
-		CollabToken:    os.Getenv("COLLAB_INTERNAL_TOKEN"),
+		Environment:       os.Getenv("APP_ENV"),
+		ListenAddr:        envOr("API_LISTEN_ADDR", "127.0.0.1:8080"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		PublicOrigin:      envOr("PUBLIC_ORIGIN", "http://localhost:3000"),
+		ClientID:          os.Getenv("GITHUB_CLIENT_ID"),
+		ClientSecret:      os.Getenv("GITHUB_CLIENT_SECRET"),
+		GitHubAuthURL:     "https://github.com/login/oauth/authorize",
+		GitHubTokenURL:    "https://github.com/login/oauth/access_token",
+		GitHubUserURL:     "https://api.github.com/user",
+		CollabOrigin:      envOr("COLLAB_INTERNAL_ORIGIN", "http://127.0.0.1:8081"),
+		CollabToken:       os.Getenv("COLLAB_INTERNAL_TOKEN"),
+		ArtifactEndpoint:  envOr("ARTIFACT_ENDPOINT", "http://127.0.0.1:9000"),
+		ArtifactAccessKey: os.Getenv("ARTIFACT_ACCESS_KEY"),
+		ArtifactSecretKey: os.Getenv("ARTIFACT_SECRET_KEY"),
+		ArtifactBucket:    envOr("ARTIFACT_BUCKET", "cce-checkpoints"),
 	}
 	if c.Environment != "development" && c.Environment != "production" {
 		return c, errors.New("APP_ENV must be development or production")

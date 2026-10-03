@@ -2,3 +2,6 @@ services:
   postgres:
     ports: ["127.0.0.1:54329:5432"]
     networks: [private, public]
+  minio:
+    ports: ["127.0.0.1:9000:9000"]
+    networks: [private, public]

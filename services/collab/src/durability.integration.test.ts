@@ -15,6 +15,21 @@ import { fixture, secret, connect, frame, sync, changes, mutation } from "./test
 const adminURL=process.env.TEST_DATABASE_URL;
 const workerURL=process.env.TEST_COLLAB_DATABASE_URL ?? adminURL;
 const hash=(value: Uint8Array) => createHash('sha256').update(value).digest();
+
+test("retained tails cross decimal sequence boundaries and replay multiple numeric batches",{skip:!adminURL},async () => {
+  const pool=new Pool({connectionString:adminURL});const scope=await fixture(pool);
+  const store=new DocumentStore(workerURL!,randomUUID());const doc=new Y.Doc();const text=doc.getText('content');
+  let update:Uint8Array=new Uint8Array();doc.on('update',value=>{update=value;});
+  try {
+    const fence=await store.acquire(scope.document_id);
+    for(let i=0;i<25;i++) {
+      text.insert(text.length,'x');
+      assert.equal(await store.append(scope,fence,BigInt(i),randomUUID(),randomUUID(),hash(update),update,i+1),BigInt(i+1));
+    }
+    const restored=await store.hydrate(scope.document_id);const copy=new Y.Doc();copy.getText('content');Y.applyUpdate(copy,restored.state);
+    assert.equal(restored.sequence,25n);assert.equal(restored.snapshotSequence,0n);assert.equal(copy.getText('content').toString(),'x'.repeat(25));copy.destroy();
+  } finally {doc.destroy();await store.pool.end();await pool.end();}
+});
 const wait=(ms:number) => new Promise(resolve => setTimeout(resolve,ms));
 async function until(check:()=>Promise<boolean>,timeout=10000) {
   const end=Date.now()+timeout;

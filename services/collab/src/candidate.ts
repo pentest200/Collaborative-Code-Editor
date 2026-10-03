@@ -1,6 +1,6 @@
 import { Worker } from "node:worker_threads";
 
-export type EncodedDocument = { state: Uint8Array; vector: Uint8Array; textBytes: number; elapsedMs: number; heapBytes: number };
+export type EncodedDocument = { state: Uint8Array; vector: Uint8Array; text?: string; textBytes: number; elapsedMs: number; heapBytes: number };
 let active = 0;
 const source = String.raw`
 const { parentPort, workerData } = require('node:worker_threads');
@@ -20,6 +20,7 @@ try {
   }
   Y.applyUpdate(doc, new Uint8Array(workerData.state));
   for (const bytes of workerData.updates) Y.applyUpdate(doc, new Uint8Array(bytes));
+  if (workerData.text !== undefined) doc.getText('content').insert(0, workerData.text);
   if (doc.share.size !== 1 || !(doc.share.get('content') instanceof Y.Text)) throw new Error();
   const text = doc.getText('content');
   if (text.toDelta().some(item => typeof item.insert !== 'string' || 'attributes' in item)) throw new Error();
@@ -28,7 +29,7 @@ try {
   if (textBytes > 262144 || state.length > 2097152 || vector.length > 65536) throw new Error();
   if (workerData.expectedVector && !Buffer.from(vector).equals(Buffer.from(workerData.expectedVector))) throw new Error();
   const update = workerData.syncVector ? Y.encodeStateAsUpdate(doc, new Uint8Array(workerData.syncVector)) : undefined;
-  parentPort.postMessage({ state, vector, update, textBytes, elapsedMs: performance.now()-start, heapBytes: process.memoryUsage().heapUsed });
+  parentPort.postMessage({ state, vector, update, ...(workerData.projectText ? { text: text.toString() } : {}), textBytes, elapsedMs: performance.now()-start, heapBytes: process.memoryUsage().heapUsed });
   doc.destroy();
 } catch { parentPort.postMessage({ error: true }); }
 parentPort.close();
@@ -36,7 +37,7 @@ parentPort.close();
 
 // Main-thread state is encoded bytes only. Decode, replay, validation, cloning,
 // state/vector encoding and sync-delta computation all happen in isolation.
-export async function encodeCandidate(state: Uint8Array, updates: Uint8Array[] = [], options: { syncVector?: Uint8Array; expectedVector?: Uint8Array } = {}): Promise<EncodedDocument & { update?: Uint8Array }> {
+export async function encodeCandidate(state: Uint8Array, updates: Uint8Array[] = [], options: { syncVector?: Uint8Array; expectedVector?: Uint8Array; text?: string; projectText?: boolean } = {}): Promise<EncodedDocument & { update?: Uint8Array }> {
   if (active >= 4) throw new Error("RATE_LIMITED");
   active++;
   let worker: Worker | undefined;

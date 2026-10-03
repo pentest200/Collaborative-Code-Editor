@@ -3,8 +3,8 @@ info:
   title: Collaborative Code Editor API contract
   version: 0.1.0
   description: >-
-    Phase 04 implements health, identity, projects, memberships, file-tree metadata, and durable realtime collaboration through the separate WebSocket contract.
-    Durable editing receipts, checkpoints, runs, and search remain reserved for later phases.
+    Phases 00–06 implement health, identity, projects, memberships, file-tree metadata, durable realtime collaboration, and private immutable checkpoints with owner-only restore.
+    Runs and search remain reserved for later phases. See checkpoints.md for artifact and generation contracts.
 servers:
   - url: /
     description: Same origin through web reverse proxy
@@ -301,7 +301,15 @@ paths:
       x-implementation-phase: '06'
       security: [{ sessionCookie: [] }]
       responses:
-        '200': { description: Authorized checkpoint list and states }
+        '200':
+          description: Latest 100 authorized checkpoints and actual materialization states
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [checkpoints]
+                properties:
+                  checkpoints: { type: array, items: { $ref: '#/components/schemas/Checkpoint' } }
     post:
       tags: [checkpoints]
       x-implementation-phase: '06'
@@ -317,7 +325,14 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 120 }
       responses:
-        '202': { description: Captured checkpoint cut; materialization pending }
+        '202':
+          description: Captured committed checkpoint cut; background materialization pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Checkpoint' }
+        '401': { description: Session required }
+        '403': { description: Owner/editor and CSRF/Origin required }
+        '503': { description: Capture storage failure }
   /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}:
     get:
       tags: [checkpoints]
@@ -328,8 +343,42 @@ paths:
         - { $ref: '#/components/parameters/ProjectId' }
         - { name: checkpoint_id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
-        '200': { description: Authorized checkpoint metadata and captured file list }
+        '200': { description: Canonical checksum-verified ready manifest; see checkpoints.md }
         '409': { $ref: '#/components/responses/Conflict' }
+        '404': { description: Checkpoint missing or outside current project membership }
+        '503': { description: Manifest verification or storage failure }
+  /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/files/{file_id}:
+    get:
+      tags: [checkpoints]
+      x-implementation-phase: '06'
+      summary: Download verified captured UTF-8 text under current membership
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: checkpoint_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/FileId' }
+      responses:
+        '200':
+          description: Checksum-verified scoped text attachment, never a public storage URL
+          content:
+            text/plain:
+              schema: { type: string }
+        '404': { description: Missing file/checkpoint or current access denied }
+        '409': { description: Checkpoint is incomplete }
+        '503': { description: File or manifest verification/storage failure }
+  /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/retry:
+    post:
+      tags: [checkpoints]
+      x-implementation-phase: '06'
+      summary: Owner/editor retries a failed materialization from its original captured cut
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: checkpoint_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '202': { description: Original checkpoint returned to captured with durable job pending }
+        '403': { description: Owner/editor and CSRF/Origin required }
+        '409': { description: Only failed checkpoints can be retried }
   /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/restore:
     post:
       tags: [checkpoints]
@@ -340,8 +389,11 @@ paths:
         - { name: checkpoint_id, in: path, required: true, schema: { type: string, format: uuid } }
         - { $ref: '#/components/parameters/IfMatch' }
       responses:
-        '200': { description: New generation and tree version }
+        '200': { description: Atomically replaced tree with fresh generations; tree_version and previous_checkpoint_id/previous_checkpoint_name returned. Previous cut is durably captured and materialization pending. }
         '409': { $ref: '#/components/responses/Conflict' }
+        '403': { description: Current owner and CSRF/Origin required }
+        '428': { description: Decimal If-Match tree version required }
+        '503': { description: Preparation or replacement failed; refresh to resolve any ambiguous completion }
   /api/v1/projects/{project_id}/runs:
     parameters: [{ $ref: '#/components/parameters/ProjectId' }]
     post:
@@ -424,6 +476,19 @@ components:
     IfMatch: { name: If-Match, in: header, required: true, schema: { $ref: '#/components/schemas/DecimalSequence' } }
   schemas:
     DecimalSequence: { type: string, pattern: '^(0|[1-9][0-9]*)$' }
+    Checkpoint:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, creator_id, name, state, captured_tree_version, created_at, failure_code]
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        creator_id: { type: string, format: uuid }
+        name: { type: string }
+        state: { type: string, enum: [captured, materializing, ready, failed] }
+        captured_tree_version: { $ref: '#/components/schemas/DecimalSequence' }
+        created_at: { type: string, format: date-time }
+        failure_code: { type: [string, 'null'] }
     User:
       type: object
       additionalProperties: false

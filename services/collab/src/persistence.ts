@@ -49,7 +49,7 @@ export class DocumentStore {
         if (performance.now() > deadline) throw new Error("STORAGE_UNAVAILABLE");
         // At most 8 MiB per replay batch (16 bounded updates); the retained log
         // is never copied in full into the main process or a worker.
-        const rows = (await client.query("SELECT sequence::text,update_bytes,update_hash FROM document_updates WHERE document_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY sequence LIMIT 16", [document, sequence.toString(), head])).rows;
+        const rows = (await client.query("SELECT sequence::text,update_bytes,update_hash FROM document_updates WHERE document_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY document_updates.sequence LIMIT 16", [document, sequence.toString(), head])).rows;
         if (!rows.length) throw new Error("STORAGE_UNAVAILABLE");
         for (const row of rows) {
           if (BigInt(row.sequence) !== sequence + 1n || !digest(row.update_bytes).equals(row.update_hash)) throw new Error("STORAGE_UNAVAILABLE");

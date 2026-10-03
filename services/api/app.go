@@ -16,9 +16,10 @@ import (
 )
 
 type App struct {
-	db     *pgxpool.Pool
-	cfg    Config
-	client *http.Client
+	db        *pgxpool.Pool
+	cfg       Config
+	client    *http.Client
+	artifacts artifactStore
 }
 
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -46,6 +47,12 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("PATCH /api/v1/projects/{project_id}/tree/{file_id}", a.updateTreeEntry)
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/tree/{file_id}", a.deleteTreeEntry)
 	mux.HandleFunc("GET /ws/documents/{document_id}", a.documentSocket)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/checkpoints", a.listCheckpoints)
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/checkpoints", a.createCheckpoint)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}", a.previewCheckpoint)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/files/{file_id}", a.downloadCheckpointFile)
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/retry", a.retryCheckpoint)
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/restore", a.restoreCheckpoint)
 	mux.HandleFunc("GET /ws/projects/{project_id}", a.projectSocket)
 	return mux
 }
