@@ -10,18 +10,20 @@
     "lint": "biome lint src next.config.ts"
   },
   "dependencies": {
+    "@cce/protocol": "0.0.0",
     "monaco-editor": "0.52.2",
     "next": "16.3.8",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "y-monaco": "0.1.6",
+    "y-protocols": "1.0.7",
     "yjs": "13.6.27"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@types/node": "24.5.2",
     "@types/react": "19.2.0",
     "@types/react-dom": "19.2.0",
-    "@biomejs/biome": "2.5.15",
     "typescript": "5.9.3"
   }
 }

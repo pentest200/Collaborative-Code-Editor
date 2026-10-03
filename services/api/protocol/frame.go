@@ -67,7 +67,7 @@ func limits(typ byte) (int, int, bool) {
 		return 0, 65536, true
 	case 3:
 		return 16, 16 + 65536 + 2097152, true
-	case 4:
+	case 4, 9:
 		return 65, 64 + 524288, true
 	case 5:
 		return 73, 72 + 524288, true
@@ -84,5 +84,5 @@ func allowed(typ byte, direction Direction) bool {
 	if direction == Client {
 		return typ == 2 || typ == 4 || typ == 7
 	}
-	return typ == 1 || typ == 3 || typ == 5 || typ == 6 || typ == 7 || typ == 8
+	return typ == 1 || typ == 3 || typ == 5 || typ == 6 || typ == 7 || typ == 8 || typ == 9
 }

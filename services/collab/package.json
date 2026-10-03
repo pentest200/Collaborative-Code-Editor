@@ -1,20 +1,26 @@
 {
   "name": "@cce/collab",
   "private": true,
+  "type": "module",
   "version": "0.0.0",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "npm run build -w @cce/protocol && tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npm run build -w @cce/protocol && tsc --noEmit",
     "lint": "eslint src",
     "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
+    "@cce/protocol": "0.0.0",
+    "pg": "8.16.3",
+    "ws": "8.18.3",
     "yjs": "13.6.27"
   },
   "devDependencies": {
     "@types/node": "24.5.2",
+    "@types/pg": "8.15.5",
+    "@types/ws": "8.18.1",
     "eslint": "10.11.0",
     "tsx": "4.20.5",
     "typescript": "5.9.3",

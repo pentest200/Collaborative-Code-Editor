@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MonacoPreview from "./monaco-preview";
+import type { ConnectionState } from "@/collaboration/provider";
 
 type Project = { id: string; name: string; role: "owner" | "editor" | "viewer" };
 type Session = { csrf_token: string };
@@ -47,11 +48,14 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
+  const [connection, setConnection] = useState<ConnectionState>("Connecting");
+  const eventSequence = useRef("0");
 
   const loadTree = useCallback(async () => {
     const response = await fetch(`${base}/tree`, { cache: "no-store" });
     if (!response.ok) throw new Error(response.status === 404 ? "Project access has changed." : "Could not load the file tree.");
     const next = await response.json() as Tree;
+    eventSequence.current = next.event_sequence;
     setTree(next);
     setTabs((current) => current.filter((id) => next.entries.some((entry) => entry.id === id && entry.kind === "file")));
     setActiveId((current) => next.entries.some((entry) => entry.id === current && entry.kind === "file") ? current : "");
@@ -74,6 +78,47 @@ export default function WorkspacePage() {
     })();
     return () => { active = false; };
   }, [base, loadTree]);
+
+  const eventsReady = Boolean(project && tree);
+  useEffect(() => {
+    if (!eventsReady) return;
+    let stopped = false;
+    let socket: WebSocket | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let refreshing = false;
+    let dirty = false;
+    const refresh = async () => {
+      if (refreshing) { dirty = true; return; }
+      refreshing = true;
+      try {
+        do {
+          dirty = false;
+          const response = await fetch(base, { cache: "no-store" });
+          if (!response.ok) { setProject(null); setError("Project access has changed."); return; }
+          setProject(await response.json() as Project);
+          await loadTree();
+        } while (dirty && !stopped);
+      } catch { if (!stopped) setError("Could not refresh project changes."); }
+      finally { refreshing = false; }
+    };
+    const connect = () => {
+      if (stopped) return;
+      const endpoint = new URL(`/ws/projects/${projectId}?after=${eventSequence.current}`, location.href);
+      endpoint.protocol = endpoint.protocol === "https:" ? "wss:" : "ws:";
+      const current = new WebSocket(endpoint);
+      socket = current;
+      current.onmessage = (message) => {
+        try {
+          const frame = JSON.parse(String(message.data)) as { type?: string };
+          if (frame.type === "EVENT" || frame.type === "RESYNC_REQUIRED") void refresh();
+          if (frame.type === "ACCESS_CHANGED") { setProject(null); setError("Project access has changed."); current.close(); }
+        } catch { setError("Could not read project changes."); }
+      };
+      current.onclose = () => { if (!stopped) retry = setTimeout(connect, 1000); };
+    };
+    connect();
+    return () => { stopped = true; if (retry) clearTimeout(retry); socket?.close(); };
+  }, [base, eventsReady, loadTree, projectId]);
 
   const selected = tree?.entries.find((entry) => entry.id === selectedId) ?? null;
   const activeFile = tree?.entries.find((entry) => entry.id === activeId && entry.kind === "file") ?? null;
@@ -139,7 +184,7 @@ export default function WorkspacePage() {
   if (!project || !tree) return <main className="workspace-gate"><Link href="/">← Projects</Link><h1>Workspace unavailable</h1><p role="alert">{error || "Could not load this project."}</p></main>;
 
   return <main className="workspace">
-    <header className="workspace-topbar"><div className="workspace-title"><Link href="/" aria-label="Back to projects">←</Link><span className="workspace-logo">CCE</span><strong>{project.name}</strong><span className="workspace-state">File tree ready · Editing unavailable</span></div><nav aria-label="Project actions"><Link href={`/projects/${projectId}`}>Team</Link>{project.role === "owner" && <Link href={`/projects/${projectId}`}>Share</Link>}<button type="button" disabled title="Checkpoints are not available yet">Checkpoints</button><button type="button" disabled title="Code execution is not available yet">Run</button></nav></header>
+    <header className="workspace-topbar"><div className="workspace-title"><Link href="/" aria-label="Back to projects">←</Link><span className="workspace-logo">CCE</span><strong>{project.name}</strong><span className="workspace-state">{activeFile ? connection : "File tree ready"}</span></div><nav aria-label="Project actions"><Link href={`/projects/${projectId}`}>Team</Link>{project.role === "owner" && <Link href={`/projects/${projectId}`}>Share</Link>}<button type="button" disabled title="Checkpoints are not available yet">Checkpoints</button><button type="button" disabled title="Code execution is not available yet">Run</button></nav></header>
     <div className="workspace-body">
       <aside className="explorer" aria-label="File explorer"><div className="explorer-heading"><h2>Explorer</h2><span>{tree.entries.length} entries</span></div><label className="sr-only" htmlFor="file-search">Find files</label><input id="file-search" type="search" placeholder="Find files" value={query} onChange={(event) => setQuery(event.target.value)} />
         {canEdit && <div className="explorer-actions"><button type="button" onClick={() => beginAction("file")}>New file</button><button type="button" onClick={() => beginAction("folder")}>New folder</button></div>}
@@ -148,11 +193,11 @@ export default function WorkspacePage() {
         <nav aria-label="Project files" className="tree-list">{rows.length ? rows.map(({ entry, depth }) => <button key={entry.id} type="button" className={`tree-row${selectedId === entry.id ? " selected" : ""}`} style={{ paddingLeft: `${12 + depth * 17}px` }} onClick={() => openEntry(entry)} aria-label={`${entry.kind === "folder" ? "Folder" : "File"}: ${entry.name}`}><span aria-hidden="true">{entry.kind === "folder" ? collapsed.has(entry.id) ? "▸" : "▾" : "·"}</span><span>{entry.name}</span></button>) : <p className="explorer-empty">{query ? "No matching files." : "No files yet. Create a file or folder to begin."}</p>}</nav>
       </aside>
       <section className="editor-area" aria-label="Code preview"><div className="tab-strip" role="tablist" aria-label="Open files">{tabs.map((id) => { const item = tree.entries.find((entry) => entry.id === id); return item && <div key={id} className={`tab-item${activeId === id ? " active" : ""}`}><button type="button" role="tab" aria-selected={activeId === id} onClick={() => setActiveId(id)}>{item.name}</button><button type="button" aria-label={`Close ${item.name}`} onClick={() => closeTab(id)}>×</button></div>; })}</div>
-        {activeFile ? <><div className="editor-breadcrumb">{activeFile.name}<span>Read-only preview</span></div><MonacoPreview projectId={projectId} file={activeFile} onCursor={(line, column) => setCursor({ line, column })} /><div className="editor-notice">Editing and saving are unavailable until live collaboration is connected.</div></> : <div className="editor-empty"><div className="empty-glyph">{`{ }`}</div><h2>Choose a file</h2><p>Browse the project tree, or create a file to open its code preview.</p></div>}
+        {activeFile ? <><div className="editor-breadcrumb">{activeFile.name}<span>{connection}</span></div><MonacoPreview projectId={projectId} file={activeFile} canEdit={Boolean(canEdit)} onState={setConnection} onCursor={(line, column) => setCursor({ line, column })} /><div className="editor-notice">Live edits are held in worker memory only. They are not saved yet; refresh or a worker restart can lose them.</div></> : <div className="editor-empty"><div className="empty-glyph">{`{ }`}</div><h2>Choose a file</h2><p>Browse the project tree, or create a file to open its code preview.</p></div>}
         <section className="output-panel" aria-label="Output panel"><div className="output-heading"><strong>Output</strong><span>Unavailable</span></div><p>Code execution and output will appear here when runs are available.</p></section>
       </section>
     </div>
     {error && <div role="alert" className="workspace-error">{error}<button type="button" onClick={() => setError("")} aria-label="Dismiss error">×</button></div>}
-    <footer className="workspace-status"><span>{project.role} access</span><span>{activeFile?.language ?? "No file"}</span><span>{activeFile ? `Ln ${cursor.line}, Col ${cursor.column}` : ""}</span><span>Read-only · Version {tree.tree_version}</span></footer>
+    <footer className="workspace-status"><span>{project.role} access</span><span>{activeFile?.language ?? "No file"}</span><span>{activeFile ? `Ln ${cursor.line}, Col ${cursor.column}` : ""}</span><span>{activeFile ? connection : `Tree version ${tree.tree_version}`}</span></footer>
   </main>;
 }

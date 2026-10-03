@@ -45,11 +45,13 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/projects/{project_id}/tree", a.createTreeEntry)
 	mux.HandleFunc("PATCH /api/v1/projects/{project_id}/tree/{file_id}", a.updateTreeEntry)
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/tree/{file_id}", a.deleteTreeEntry)
+	mux.HandleFunc("GET /ws/documents/{document_id}", a.documentSocket)
+	mux.HandleFunc("GET /ws/projects/{project_id}", a.projectSocket)
 	return mux
 }
 
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, 200, map[string]string{"status": "ok", "service": "api", "phase": "02"})
+	writeJSON(w, 200, map[string]string{"status": "ok", "service": "api", "phase": "03"})
 }
 
 func (a *App) authConfig(w http.ResponseWriter, _ *http.Request) {

@@ -10,11 +10,12 @@ export enum FrameType {
   UPDATE_COMMITTED,
   DURABLE_ACK,
   AWARENESS,
-  ERROR
+  ERROR,
+  PENDING_UPDATE
 }
 
 const clientTypes = new Set([FrameType.SYNC_REQUEST, FrameType.DURABLE_UPDATE, FrameType.AWARENESS]);
-const serverTypes = new Set([FrameType.HELLO, FrameType.SYNC_STATE, FrameType.UPDATE_COMMITTED, FrameType.DURABLE_ACK, FrameType.AWARENESS, FrameType.ERROR]);
+const serverTypes = new Set([FrameType.HELLO, FrameType.SYNC_STATE, FrameType.UPDATE_COMMITTED, FrameType.DURABLE_ACK, FrameType.AWARENESS, FrameType.ERROR, FrameType.PENDING_UPDATE]);
 const limits: Record<FrameType, { min: number; max: number }> = {
   [FrameType.HELLO]: { min: 2, max: 4096 },
   [FrameType.SYNC_REQUEST]: { min: 0, max: 65536 },
@@ -23,7 +24,8 @@ const limits: Record<FrameType, { min: number; max: number }> = {
   [FrameType.UPDATE_COMMITTED]: { min: 73, max: 72 + 524288 },
   [FrameType.DURABLE_ACK]: { min: 72, max: 72 },
   [FrameType.AWARENESS]: { min: 1, max: 2048 },
-  [FrameType.ERROR]: { min: 2, max: 4096 }
+  [FrameType.ERROR]: { min: 2, max: 4096 },
+  [FrameType.PENDING_UPDATE]: { min: 65, max: 64 + 524288 }
 };
 
 export class FrameError extends Error {}

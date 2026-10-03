@@ -13,7 +13,8 @@ func TestSharedAckFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	var fixture struct {
-		Hex string `json:"durable_ack_hex"`
+		Hex     string `json:"durable_ack_hex"`
+		Pending string `json:"pending_update_hex"`
 	}
 	if err := json.Unmarshal(data, &fixture); err != nil {
 		t.Fatal(err)
@@ -31,5 +32,16 @@ func TestSharedAckFixture(t *testing.T) {
 	}
 	if _, err := Decode(append(frameBytes, 0), Server); err == nil {
 		t.Fatal("accepted trailing byte")
+	}
+	pending, err := hex.DecodeString(fixture.Pending)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pendingFrame, err := Decode(pending, Server)
+	if err != nil || pendingFrame.Type != 9 || len(pendingFrame.Body) != 65 {
+		t.Fatalf("bad pending update fixture: %+v %v", pendingFrame, err)
+	}
+	if _, err := Decode(pending, Client); err == nil {
+		t.Fatal("accepted pending update from client")
 	}
 }

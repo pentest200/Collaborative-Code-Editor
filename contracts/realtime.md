@@ -16,6 +16,9 @@ Every WebSocket message contains exactly `version:uint8=1 | type:uint8 | payload
 | DURABLE_ACK | 6 | server → sender | `sequence:uint64, client_instance_uuid:16, message_uuid:16, hash:32`; exactly 72 bytes. |
 | AWARENESS | 7 | both | y-protocols awareness update ≤2 KiB, with client ID bound to connection and server supplied identity; lossy. |
 | ERROR | 8 | server → client | Strict JSON `{code,retryable,message?,client_instance_id?,message_id?}` ≤4 KiB; safe bounded message. |
+| PENDING_UPDATE | 9 | server → peers | Phase 03 only: `client_instance_uuid:16, message_uuid:16, SHA256(update):32, Yjs_update` (1..512 KiB). This is volatile and has no sequence or durability receipt. Phase 04 replaces this route with `UPDATE_COMMITTED`. |
+
+Phase 03 opens a room from the generation-one committed snapshot. `SYNC_STATE` contains only that committed state and sequence zero; any subsequent in-memory edits are replayed as ordered `PENDING_UPDATE` frames after it. Peers also receive `PENDING_UPDATE` live. `DURABLE_UPDATE` remains the identified client submission envelope, but the Phase 03 worker does not append it, send `DURABLE_ACK`, or send `UPDATE_COMMITTED`. The browser labels every live edit unsaved. This temporary extension is removed when Phase 04 supplies the committed append path.
 
 Strict JSON means unique known keys only, required keys present, no duplicate keys, no prototype pollution keys, UUIDs in canonical lowercase form, and no extra values. HELLO's identifiers are lowercase UUID strings. Valid error codes: `AUTH_REQUIRED`, `FORBIDDEN`, `STALE_GENERATION`, `ROOM_MOVED`, `STORAGE_UNAVAILABLE`, `FRAME_INVALID`, `LIMIT_EXCEEDED`, `RATE_LIMITED`, `RECEIPT_MISMATCH`, `HEAD_CHANGED`. `ERROR` message is at most 256 UTF-8 bytes and contains no source or secrets.
 
@@ -46,4 +49,4 @@ Limits are design ceilings and have not been load validated. Parser work is addi
 
 ## Metadata stream
 
-The project stream resumes at decimal `after` sequence. Go reads durable `project_events` in sequence order; Redis can only hint that new rows exist. An exceeded replay window sends `RESYNC_REQUIRED` with current tree version/event sequence and the client refetches. Tree mutations require `If-Match` with a decimal tree version; a stale version returns typed HTTP 409 and current version. Redis loss cannot lose metadata events.
+The project stream resumes at canonical decimal `after` sequence. Go reads durable `project_events` in sequence order; Redis can only hint that new rows exist. This server-only WebSocket carries JSON text objects `{type:"EVENT",sequence:"decimal",event_type:"string",payload:{...}}`. A gap, future `after`, or backlog exceeding 1,000 events sends `{type:"RESYNC_REQUIRED",tree_version:"decimal",event_sequence:"decimal"}` and closes; the client refetches. Authorization loss sends `{type:"ACCESS_CHANGED"}` and closes. Go rechecks the session, project and membership on every poll. A client does not publish metadata frames. Tree mutations require `If-Match` with a decimal tree version; a stale version returns typed HTTP 409 and current version. Redis loss cannot lose metadata events.

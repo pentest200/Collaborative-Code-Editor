@@ -78,7 +78,7 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     assert.equal(await page.getByRole("button", { name: "Run" }).isDisabled(), true);
     await page.getByRole("button", { name: "File: main.ts" }).click();
     await page.getByRole("tab", { name: "main.ts" }).waitFor();
-    await page.getByText("Editing and saving are unavailable until live collaboration is connected.").waitFor();
+    await page.getByText("Live edits are held in worker memory only. They are not saved yet; refresh or a worker restart can lose them.").waitFor();
     assert.equal(await page.getByRole("region", { name: "Output panel" }).getByText("Unavailable").count(), 1);
     await page.getByRole("button", { name: "New file" }).click();
     const form = page.getByRole("form", { name: "File tree action" });
@@ -112,7 +112,7 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     await viewer.getByRole("heading", { name: "Explorer" }).waitFor();
     assert.equal(await viewer.getByRole("button", { name: "New file" }).count(), 0, "viewer cannot see metadata write controls");
     await viewer.getByRole("button", { name: "File: main.ts" }).click();
-    await viewer.getByText("Editing and saving are unavailable until live collaboration is connected.").waitFor();
+    await viewer.getByText("Live edits are held in worker memory only. They are not saved yet; refresh or a worker restart can lose them.").waitFor();
     await viewer.locator(".monaco-editor").waitFor();
     await viewer.setViewportSize({ width: 390, height: 844 });
     assert.equal(await viewer.getByRole("navigation", { name: "Project files" }).isVisible(), true);

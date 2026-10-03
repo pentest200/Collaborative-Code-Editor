@@ -3,8 +3,8 @@ info:
   title: Collaborative Code Editor API contract
   version: 0.1.0
   description: >-
-    Phase 02 implements health, identity, projects, memberships, invitations, and file-tree metadata.
-    Source editing, realtime collaboration, checkpoints, runs, and search remain reserved for later phases.
+    Phase 03 implements health, identity, projects, memberships, file-tree metadata, and volatile realtime collaboration through the separate WebSocket contract.
+    Durable editing receipts, checkpoints, runs, and search remain reserved for later phases.
 servers:
   - url: /
     description: Same origin through web reverse proxy
@@ -20,7 +20,7 @@ paths:
   /api/v1/healthz:
     get:
       tags: [foundation]
-      summary: Process liveness (Phase 02)
+      summary: Process liveness (Phase 03)
       responses:
         '200':
           description: Process is serving HTTP; does not assert database readiness
@@ -33,7 +33,7 @@ paths:
                 properties:
                   status: { const: ok }
                   service: { const: api }
-                  phase: { const: '02' }
+                  phase: { const: '03' }
   /api/v1/auth/github/start:
     get:
       tags: [identity]

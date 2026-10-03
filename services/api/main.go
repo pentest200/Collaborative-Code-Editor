@@ -27,8 +27,7 @@ func main() {
 	app := &App{db: db, cfg: cfg, client: &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	server := &http.Server{
 		Addr: cfg.ListenAddr, Handler: app.routes(),
-		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second,
-		WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second,
 		MaxHeaderBytes: 16 << 10,
 	}
 	log.Printf("api listening on %s", cfg.ListenAddr)
