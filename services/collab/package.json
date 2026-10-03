@@ -15,6 +15,8 @@
     "@cce/protocol": "0.0.0",
     "pg": "8.16.3",
     "ws": "8.18.3",
+    "lib0": "0.2.119",
+    "y-protocols": "1.0.7",
     "yjs": "13.6.27"
   },
   "devDependencies": {

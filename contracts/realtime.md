@@ -39,12 +39,16 @@ Room queue is FIFO, one active fenced owner per document. Candidate Yjs updates 
 | Room ingress | 100 updates/sec, FIFO 128 messages; `RATE_LIMITED` |
 | Client send queue | 128 messages or 4 MiB; disconnect and resync |
 | Local outbox | 8 MiB/account-document; stop sending and expose draft export |
+| Browser retained state / outbox count | 2 MiB / 4096 identified items per account-document-generation |
+| Awaiting browser retention | 128 updates / 4 MiB, then stop typing with visible export |
 | Project update log | 1 GiB; reject writes visibly before quota is exceeded |
 | Candidate validation | 2 seconds wall time and 64 MiB worker heap budget; fail closed |
 | Connected tabs / inactive models | 1 active document/tab, 4 inactive models/tab |
 | Read revalidation | Every 2 seconds plus durable revocation event |
 
 Limits are design ceilings and have not been load validated. Parser work is additionally bounded by exact envelope lengths before Yjs decode.
+
+Phase 05 implements the browser receipt/outbox/reconnect contract and authenticated y-protocols awareness. `provider.md` freezes its exact selection whitelist, clock growth, identity enrichment, disposal and account privacy behavior. Awareness remains lossy; PostgreSQL alone authorizes committed source.
 
 ## Metadata stream
 

@@ -4,9 +4,10 @@ import { WebSocket, WebSocketServer } from "ws";
 import { decodeEnvelope, encodeEnvelope, FrameType } from "@cce/protocol";
 import { DocumentStore, type OwnedState } from "./persistence.js";
 import { encodeCandidate } from "./candidate.js";
+import { decodePresence, encodePresence, cursorColor, type Presence } from "./awareness.js";
 
 type Claims = { iss: string; aud: string; sub: string; sid: string; project_id: string; file_id: string; document_id: string; generation: string; role: string; connection_id: string; exp: number; iat: number };
-type Peer = { socket: WebSocket; claims: Claims };
+type Peer = { socket: WebSocket; claims: Claims; name: string; presence?: Presence; presenceTokens: number; presenceAt: number };
 type Room = { value: OwnedState; fence: bigint; stopped: boolean; peers: Set<Peer>; queue: Promise<void>; queued: number; queuedBytes: number; rateTokens: number; rateAt: number; snapshotSequence: bigint; snapshotAt: number; timer?: NodeJS.Timeout; revalidation?: NodeJS.Timeout; idle?: NodeJS.Timeout };
 
 const encoder = new TextEncoder();
@@ -76,15 +77,28 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
   let closing = false;
 
   async function current(claims: Claims) {
-    const result = await pool.query(`SELECT f.id::text AS file_id,f.generation::text AS generation,m.role
+    const result = await pool.query(`SELECT f.id::text AS file_id,f.generation::text AS generation,m.role,u.display_name
       FROM documents d JOIN files f ON f.id=d.file_id
       JOIN projects p ON p.id=f.project_id AND p.lifecycle_state='active'
       JOIN project_members m ON m.project_id=p.id AND m.user_id=$2
+      JOIN users u ON u.id=m.user_id
       JOIN sessions s ON s.id=$3 AND s.user_id=m.user_id AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()
       WHERE d.id=$1 AND f.project_id=$4 AND f.current_document_id=d.id AND f.tombstoned_at IS NULL AND d.generation=f.generation`,
       [claims.document_id, claims.sub, claims.sid, claims.project_id]);
-    const row = result.rows[0] as { file_id: string; generation: string; role: string } | undefined;
+    const row = result.rows[0] as { file_id: string; generation: string; role: string; display_name: string } | undefined;
     return row && row.file_id === claims.file_id && row.generation === claims.generation ? row : null;
+  }
+  function broadcastPresence(room: Room, value: Presence) {
+    const frame = encodeEnvelope(FrameType.AWARENESS,encodePresence(value));
+    for (const peer of room.peers) {
+      // Presence is lossy: leave room for committed source and receipts.
+      if (peer.socket.bufferedAmount < 65536) send(peer,frame);
+    }
+  }
+  function removePresence(room: Room, peer: Peer) {
+    if (!peer.presence) return;
+    peer.presence = { ...peer.presence, clock: peer.presence.clock+1, state: null, at: Date.now() };
+    broadcastPresence(room,peer.presence);
   }
   function stop(document: string, room: Room, code: string) {
     room.stopped = true; clearInterval(room.timer); clearInterval(room.revalidation); clearTimeout(room.idle);
@@ -137,6 +151,7 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
           void (async () => {
             for (const peer of room.peers) {
               if (!await current(peer.claims)) { send(peer,errorFrame('FORBIDDEN','Access changed')); peer.socket.close(1008); }
+              if (peer.presence?.state && Date.now()-peer.presence.at>30000) removePresence(room,peer);
             }
             if (Date.now()-room.snapshotAt>=30000) enqueue(room,0,async () => { try { await snapshot(claims.document_id,room); } catch (error) { if (errorCode(error)==='ROOM_MOVED') stop(claims.document_id,room,'ROOM_MOVED'); } });
           })().catch(error => stop(claims.document_id,room,errorCode(error))).finally(() => { ticking=false; });
@@ -159,11 +174,12 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
       const room = await roomFor(claims);
       if (room.stopped || !await current(claims)) throw new Error('FORBIDDEN');
       wss.handleUpgrade(request,socket,head,ws => {
-        const peer: Peer = { socket: ws, claims }; room.peers.add(peer); clearTimeout(room.idle);
+        const peer: Peer = { socket: ws, claims, name: access.display_name.slice(0,80), presenceTokens: 10, presenceAt: performance.now() }; room.peers.add(peer); clearTimeout(room.idle);
         send(peer,encodeEnvelope(FrameType.HELLO,encoder.encode(JSON.stringify({ protocol:1,file_id:claims.file_id,document_id:claims.document_id,generation:Number(claims.generation),committed_sequence:room.value.sequence.toString() }))));
         ws.on('error', () => { ws.terminate(); });
         ws.on('close', () => {
           room.peers.delete(peer);
+          removePresence(room,peer);
           if (room.peers.size || room.stopped || closing) return;
           room.idle = setTimeout(() => {
             enqueue(room,0,async () => {
@@ -177,7 +193,22 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
           if (!binary) { send(peer,errorFrame('FRAME_INVALID','Binary frame required')); ws.close(1003); return; }
           let frame: ReturnType<typeof decodeEnvelope>;
           try { frame=decodeEnvelope(new Uint8Array(raw as Buffer),'client'); } catch { send(peer,errorFrame('FRAME_INVALID','Invalid frame')); ws.close(1003); return; }
-          if (frame.type!==FrameType.SYNC_REQUEST && frame.type!==FrameType.DURABLE_UPDATE) { send(peer,errorFrame('FRAME_INVALID','Unsupported frame')); return; }
+          if (frame.type===FrameType.AWARENESS) {
+            const now=performance.now(); peer.presenceTokens=Math.min(10,peer.presenceTokens+(now-peer.presenceAt)/100); peer.presenceAt=now;
+            if (peer.presenceTokens<1 || ws.bufferedAmount>65536) return;
+            peer.presenceTokens--;
+            // Auth revalidation is shared with the two-second reader timer.
+            // Parsing is bounded by 2 KiB and never touches durable Yjs state.
+            try {
+              const value=decodePresence(frame.body);
+              if (peer.presence && peer.presence.id!==value.id || [...room.peers].some(other => other!==peer && other.presence?.id===value.id)) throw new Error('FORBIDDEN');
+              if (!peer.presence && value.clock>1000000 || peer.presence && value.clock>peer.presence.clock+1000 || value.clock===4294967295) throw new Error('FRAME_INVALID');
+              if (peer.presence && value.clock<=peer.presence.clock) return;
+              peer.presence={id:value.id,clock:value.clock,at:Date.now(),state:value.removed?null:{selection:value.selection,user:{id:claims.sub,name:peer.name,color:cursorColor(claims.sub)}}};
+              broadcastPresence(room,peer.presence);
+            } catch(error) { send(peer,errorFrame(errorCode(error)==='FORBIDDEN'?'FORBIDDEN':'FRAME_INVALID','Invalid awareness')); }
+            return;
+          }
           const now=performance.now(); room.rateTokens=Math.min(100,room.rateTokens+(now-room.rateAt)*0.1); room.rateAt=now;
           if (room.rateTokens<1) { send(peer,errorFrame('RATE_LIMITED','Room send rate exceeded')); return; } room.rateTokens--;
           const queued=enqueue(room,frame.body.byteLength,async () => {
@@ -189,7 +220,9 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
                 const update=value.update!; const vector=value.vector;
                 const body=new Uint8Array(16+vector.length+update.length); const view=new DataView(body.buffer);
                 view.setBigUint64(0,room.value.sequence); view.setUint32(8,vector.length); body.set(vector,12); view.setUint32(12+vector.length,update.length); body.set(update,16+vector.length);
-                send(peer,encodeEnvelope(FrameType.SYNC_STATE,body)); return;
+                send(peer,encodeEnvelope(FrameType.SYNC_STATE,body));
+                for (const other of room.peers) if (other.presence) send(peer,encodeEnvelope(FrameType.AWARENESS,encodePresence(other.presence)));
+                return;
               }
               const instance=uuid(frame.body.subarray(0,16)); const message=uuid(frame.body.subarray(16,32));
               const hash=frame.body.subarray(32,64); const update=frame.body.subarray(64);

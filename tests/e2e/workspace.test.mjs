@@ -33,6 +33,7 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     browser = await chromium.launch({ executablePath: browserPath, headless: true, args: ["--no-sandbox", "--disable-gpu"] });
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     let role = "owner";
+    const userId = randomUUID();
     let version = 0;
     const entries = [
       { id: folderId, parent_id: null, name: "src", kind: "folder", language: null, document_id: null, generation: "1" },
@@ -42,7 +43,7 @@ test("workspace has semantic controls, role limits, and a single editor while sw
       const request = route.request();
       const path = new URL(request.url()).pathname;
       const json = (value, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(value) });
-      if (path === "/api/v1/session" && request.method() === "GET") return json({ user: { id: randomUUID(), display_name: "Test Owner" }, csrf_token: "fixture-csrf" });
+      if (path === "/api/v1/session" && request.method() === "GET") return json({ user: { id: userId, display_name: "Test Owner" }, csrf_token: "fixture-csrf" });
       if (path === `/api/v1/projects/${projectId}` && request.method() === "GET") return json({ id: projectId, name: "Workspace preview", role, tree_version: String(version), event_sequence: String(version) });
       if (path === `/api/v1/projects/${projectId}/tree` && request.method() === "GET") return json({ tree_version: String(version), event_sequence: String(version), entries });
       if (path.startsWith(`/api/v1/projects/${projectId}/tree`) && request.method() !== "GET") {
@@ -81,7 +82,8 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     assert.equal(await page.getByRole("button", { name: "Run" }).isDisabled(), true);
     await page.getByRole("button", { name: "File: main.ts" }).click();
     await page.getByRole("tab", { name: "main.ts" }).waitFor();
-    await page.getByText("Saved confirms a server receipt. Unacknowledged edits have no browser draft recovery yet; keep this tab open.").waitFor();
+    await page.getByRole("button", { name: "Download visible draft" }).waitFor();
+    await page.locator(".monaco-editor").waitFor();
     assert.equal(await page.getByRole("region", { name: "Output panel" }).getByText("Unavailable").count(), 1);
     await page.getByRole("button", { name: "New file" }).click();
     const form = page.getByRole("form", { name: "File tree action" });
@@ -115,7 +117,7 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     await viewer.getByRole("heading", { name: "Explorer" }).waitFor();
     assert.equal(await viewer.getByRole("button", { name: "New file" }).count(), 0, "viewer cannot see metadata write controls");
     await viewer.getByRole("button", { name: "File: main.ts" }).click();
-    await viewer.getByText("Saved confirms a server receipt. Unacknowledged edits have no browser draft recovery yet; keep this tab open.").waitFor();
+    await viewer.getByRole("button", { name: "Download visible draft" }).waitFor();
     await viewer.locator(".monaco-editor").waitFor();
     await viewer.setViewportSize({ width: 390, height: 844 });
     // Monaco's automatic layout uses ResizeObserver; inspect the settled frame.

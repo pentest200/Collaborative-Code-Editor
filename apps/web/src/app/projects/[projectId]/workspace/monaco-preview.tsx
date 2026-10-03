@@ -4,17 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type * as Monaco from "monaco-editor";
 import type { MonacoBinding } from "y-monaco";
 import { DocumentProvider, type ConnectionState } from "@/collaboration/provider";
+import { bindEditor } from "@/collaboration/editor";
+import { downloadDraft } from "@/collaboration/drafts";
 
-export type PreviewFile = { id: string; document_id: string | null; name: string; language: string | null };
+export type PreviewFile = { id: string; document_id: string | null; generation: string; name: string; language: string | null };
 type Editor = Monaco.editor.IStandaloneCodeEditor;
 
-export default function MonacoPreview({ projectId, file, canEdit, onCursor, onState }: { projectId: string; file: PreviewFile | null; canEdit: boolean; onCursor: (line: number, column: number) => void; onState: (state: ConnectionState) => void }) {
+export default function MonacoPreview({ userId, projectId, file, canEdit, onCursor, onState }: { userId: string; projectId: string; file: PreviewFile | null; canEdit: boolean; onCursor: (line: number, column: number) => void; onState: (state: ConnectionState) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<Editor | null>(null);
   const monaco = useRef<typeof Monaco | null>(null);
   const bindingConstructor = useRef<typeof MonacoBinding | null>(null);
   const provider = useRef<DocumentProvider | null>(null);
-  const binding = useRef<MonacoBinding | null>(null);
+  const disposeBinding = useRef<(() => void) | null>(null);
   const model = useRef<Monaco.editor.ITextModel | null>(null);
   const selected = useRef(file);
   const writable = useRef(canEdit);
@@ -23,8 +25,10 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
   const connectedID = useRef("");
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  const [detail, setDetail] = useState("");
+  const [collaborators, setCollaborators] = useState<{ id: number; name: string }[]>([]);
 
-  useEffect(() => { stateCallback.current = onState; cursorCallback.current = onCursor; writable.current = canEdit; editor.current?.updateOptions({ readOnly: !canEdit || !provider.current?.isSynced }); }, [onState, onCursor, canEdit]);
+  useEffect(() => { stateCallback.current = onState; cursorCallback.current = onCursor; writable.current = canEdit; editor.current?.updateOptions({ readOnly: !canEdit || !provider.current?.canType }); }, [onState, onCursor, canEdit]);
 
   const selectModel = useCallback(() => {
     const instance = editor.current; const library = monaco.current; const item = selected.current;
@@ -34,7 +38,8 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
       if (item && model.current) library.editor.setModelLanguage(model.current, item.language ?? "plaintext");
       return;
     }
-    binding.current?.destroy(); binding.current = null;
+    if (item && provider.current?.scope.fileID === item.id && provider.current.scope.documentID !== item.document_id) provider.current.invalidateGeneration();
+    disposeBinding.current?.(); disposeBinding.current = null;
     provider.current?.close(); provider.current = null;
     model.current?.dispose(); model.current = null;
     connectedID.current = ""; instance.setModel(null);
@@ -42,16 +47,17 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
     const uri = library.Uri.parse(`cce://project/${projectId}/${item.id}/${item.document_id}`);
     const nextModel = library.editor.createModel("", item.language ?? "plaintext", uri);
     model.current = nextModel;
-    const nextProvider = new DocumentProvider(item.document_id, (state) => {
+    const nextProvider = new DocumentProvider({ userID: userId, projectID: projectId, fileID: item.id, documentID: item.document_id, generation: item.generation }, writable.current, (state) => {
       if (provider.current !== nextProvider) return;
-      instance.updateOptions({ readOnly: !writable.current || !nextProvider.isSynced || !["Synced", "Saving", "Saved"].includes(state) });
+      instance.updateOptions({ readOnly: !writable.current || !nextProvider.canType });
+      setDetail(nextProvider.detail);
       stateCallback.current(state);
     });
     provider.current = nextProvider;
-    binding.current = new Binding(nextProvider.doc.getText("content"), nextModel, new Set([instance]));
     instance.setModel(nextModel); instance.updateOptions({ readOnly: true });
+    disposeBinding.current = bindEditor(library, instance, nextModel, nextProvider, Binding, setCollaborators);
     connectedID.current = item.document_id; stateCallback.current("Connecting");
-  }, [projectId]);
+  }, [projectId, userId]);
 
   useEffect(() => { selected.current = file; if (ready) selectModel(); }, [file, ready, selectModel]);
 
@@ -85,12 +91,13 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
       } catch { if (!cancelled) setError("The code editor could not load."); }
     })();
     return () => {
-      cancelled = true; subscription?.dispose(); binding.current?.destroy(); provider.current?.close(); model.current?.dispose(); editor.current?.dispose();
-      binding.current = null; bindingConstructor.current = null; provider.current = null; model.current = null; editor.current = null; monaco.current = null; connectedID.current = "";
+      cancelled = true; subscription?.dispose(); disposeBinding.current?.(); provider.current?.close(); model.current?.dispose(); editor.current?.dispose();
+      disposeBinding.current = null; bindingConstructor.current = null; provider.current = null; model.current = null; editor.current = null; monaco.current = null; connectedID.current = "";
     };
   }, [selectModel]);
 
   return <div className="monaco-shell">
+    <div className="draft-tools"><button type="button" onClick={() => downloadDraft(provider.current?.doc.getText("content").toString() ?? "", `draft-${file?.name ?? "source.txt"}`)}>Download visible draft</button><span role="status">{detail}</span><ul aria-label="Collaborators in this file">{collaborators.map((person) => <li key={person.id}>{person.name}</li>)}</ul></div>
     {!ready && !error && <p role="status" className="editor-loading">Loading code editor…</p>}
     {error && <p role="alert" className="editor-loading">{error}</p>}
     <div ref={host} className="monaco-host" aria-hidden={!file} />

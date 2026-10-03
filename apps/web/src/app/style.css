@@ -116,3 +116,11 @@ footer { border-top: 1px solid #2b3544; color: #a9b5c7; margin-top: 3rem; paddin
   .monaco-shell { min-height: 250px; }
   .workspace-status { flex-wrap: wrap; gap: .35rem 1rem; }
 }
+.monaco-shell { display: flex; flex-direction: column; }
+.draft-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 7px 12px; font-size: 11px; border-bottom: 1px solid #263346; }
+.draft-tools span { flex: 1; min-width: 100px; color: #acbbce; }
+.draft-tools ul { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.draft-tools li { border: 1px solid #526b91; border-radius: 12px; padding: 3px 8px; }
+.draft-recovery { margin: 8px 0; }
+.draft-recovery [role=dialog] { position: fixed; z-index: 50; inset: 15% 15%; overflow: auto; padding: 24px; background: #172231; border: 1px solid #526b91; border-radius: 8px; }
+.draft-recovery li { margin: 12px 0; }

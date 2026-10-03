@@ -5,9 +5,10 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MonacoPreview from "./monaco-preview";
 import type { ConnectionState } from "@/collaboration/provider";
+import { DraftRecovery } from "@/collaboration/draft-recovery";
 
 type Project = { id: string; name: string; role: "owner" | "editor" | "viewer" };
-type Session = { csrf_token: string };
+type Session = { user: { id: string }; csrf_token: string };
 type Entry = { id: string; parent_id: string | null; name: string; kind: "file" | "folder"; language: string | null; document_id: string | null; generation: string };
 type Tree = { tree_version: string; event_sequence: string; entries: Entry[] };
 type Action = "file" | "folder" | "rename" | "move" | null;
@@ -68,8 +69,10 @@ export default function WorkspacePage() {
       try {
         const [sessionResponse, projectResponse] = await Promise.all([fetch("/api/v1/session", { cache: "no-store" }), fetch(base, { cache: "no-store" })]);
         if (!sessionResponse.ok) throw new Error("Sign in to view this workspace.");
+        const authenticated = await sessionResponse.json() as Session;
+        if (active) setSession(authenticated);
         if (!projectResponse.ok) throw new Error("Project not found or access has changed.");
-        const [currentSession, currentProject] = await Promise.all([sessionResponse.json() as Promise<Session>, projectResponse.json() as Promise<Project>]);
+        const [currentSession, currentProject] = [authenticated, await projectResponse.json() as Project];
         if (!active) return;
         setSession(currentSession); setProject(currentProject);
         await loadTree();
@@ -181,19 +184,20 @@ export default function WorkspacePage() {
   }
 
   if (loading) return <main className="workspace-gate"><p role="status">Loading workspace…</p></main>;
-  if (!project || !tree) return <main className="workspace-gate"><Link href="/">← Projects</Link><h1>Workspace unavailable</h1><p role="alert">{error || "Could not load this project."}</p></main>;
+  if (!project || !tree) return <main className="workspace-gate"><Link href="/">← Projects</Link><h1>Workspace unavailable</h1><p role="alert">{error || "Could not load this project."}</p>{session && <DraftRecovery userID={session.user.id} projectID={projectId} />}</main>;
 
   return <main className="workspace">
     <header className="workspace-topbar"><div className="workspace-title"><Link href="/" aria-label="Back to projects">←</Link><span className="workspace-logo">CCE</span><strong>{project.name}</strong><span className="workspace-state">{activeFile ? connection : "File tree ready"}</span></div><nav aria-label="Project actions"><Link href={`/projects/${projectId}`}>Team</Link>{project.role === "owner" && <Link href={`/projects/${projectId}`}>Share</Link>}<button type="button" disabled title="Checkpoints are not available yet">Checkpoints</button><button type="button" disabled title="Code execution is not available yet">Run</button></nav></header>
     <div className="workspace-body">
       <aside className="explorer" aria-label="File explorer"><div className="explorer-heading"><h2>Explorer</h2><span>{tree.entries.length} entries</span></div><label className="sr-only" htmlFor="file-search">Find files</label><input id="file-search" type="search" placeholder="Find files" value={query} onChange={(event) => setQuery(event.target.value)} />
+        {session && <DraftRecovery userID={session.user.id} projectID={projectId} />}
         {canEdit && <div className="explorer-actions"><button type="button" onClick={() => beginAction("file")}>New file</button><button type="button" onClick={() => beginAction("folder")}>New folder</button></div>}
         {canEdit && selected && <div className="explorer-actions"><button type="button" onClick={() => beginAction("rename")}>Rename</button><button type="button" onClick={() => beginAction("move")}>Move</button><button type="button" onClick={deleteSelected}>Delete</button></div>}
         {action && <form className="tree-form" aria-label="File tree action" onSubmit={submitAction}><h3>{action === "file" ? "New file" : action === "folder" ? "New folder" : action === "rename" ? "Rename entry" : "Move entry"}</h3>{action !== "move" && <><label htmlFor="entry-name">Name</label><input id="entry-name" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} /></>}{action !== "rename" && <><label htmlFor="entry-parent">Parent folder</label><select id="entry-parent" value={parent} onChange={(event) => setParent(event.target.value)}><option value="">Project root</option>{folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></>}<div><button type="submit" disabled={busy}>Save</button><button type="button" onClick={() => setAction(null)} disabled={busy}>Cancel</button></div></form>}
         <nav aria-label="Project files" className="tree-list">{rows.length ? rows.map(({ entry, depth }) => <button key={entry.id} type="button" className={`tree-row${selectedId === entry.id ? " selected" : ""}`} style={{ paddingLeft: `${12 + depth * 17}px` }} onClick={() => openEntry(entry)} aria-label={`${entry.kind === "folder" ? "Folder" : "File"}: ${entry.name}`}><span aria-hidden="true">{entry.kind === "folder" ? collapsed.has(entry.id) ? "▸" : "▾" : "·"}</span><span>{entry.name}</span></button>) : <p className="explorer-empty">{query ? "No matching files." : "No files yet. Create a file or folder to begin."}</p>}</nav>
       </aside>
       <section className="editor-area" aria-label="Code preview"><div className="tab-strip" role="tablist" aria-label="Open files">{tabs.map((id) => { const item = tree.entries.find((entry) => entry.id === id); return item && <div key={id} className={`tab-item${activeId === id ? " active" : ""}`}><button type="button" role="tab" aria-selected={activeId === id} onClick={() => setActiveId(id)}>{item.name}</button><button type="button" aria-label={`Close ${item.name}`} onClick={() => closeTab(id)}>×</button></div>; })}</div>
-        {activeFile ? <><div className="editor-breadcrumb">{activeFile.name}<span>{connection}</span></div><MonacoPreview projectId={projectId} file={activeFile} canEdit={Boolean(canEdit)} onState={setConnection} onCursor={(line, column) => setCursor({ line, column })} /><div className="editor-notice">Saved confirms a server receipt. Unacknowledged edits have no browser draft recovery yet; keep this tab open.</div></> : <div className="editor-empty"><div className="empty-glyph">{`{ }`}</div><h2>Choose a file</h2><p>Browse the project tree, or create a file to open its code preview.</p></div>}
+        {activeFile && session ? <><div className="editor-breadcrumb">{activeFile.name}<span>{connection}</span></div><MonacoPreview userId={session.user.id} projectId={projectId} file={activeFile} canEdit={Boolean(canEdit)} onState={setConnection} onCursor={(line, column) => setCursor({ line, column })} /><div className="editor-notice">Saved confirms server receipts. Offline draft retention completes after browser storage succeeds; download your draft if storage fails.</div></> : <div className="editor-empty"><div className="empty-glyph">{`{ }`}</div><h2>Choose a file</h2><p>Browse the project tree, or create a file to open its code preview.</p></div>}
         <section className="output-panel" aria-label="Output panel"><div className="output-heading"><strong>Output</strong><span>Unavailable</span></div><p>Code execution and output will appear here when runs are available.</p></section>
       </section>
     </div>

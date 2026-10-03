@@ -1,7 +1,5 @@
 # Collaborative Code Editor — Architecture and Codex Build Prompts
 
-Prepared for Kartikeya Yadav • 1 October 2026
-
 ## 1. Correct project and outcome
 
 Build a **Collaborative Code Editor**: a browser workspace in which authenticated teammates edit the same files concurrently, see each other's cursors, manage a shared file tree, reconnect without discarding their work, create restorable checkpoints, and run an immutable version of their code in a restricted execution environment.

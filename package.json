@@ -18,6 +18,7 @@
     "check:contracts": "node scripts/check-contracts.mjs",
     "test:workspace": "node --test tests/e2e/workspace.test.mjs",
     "test:realtime": "node --test tests/e2e/realtime.test.mjs",
+    "test:recovery": "node --test tests/e2e/recovery.test.mjs",
     "dev:web": "npm run dev -w @cce/web",
     "dev:collab": "npm run dev -w @cce/collab"
   },
