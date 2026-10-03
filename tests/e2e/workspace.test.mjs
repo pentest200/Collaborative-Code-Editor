@@ -11,22 +11,25 @@ const root = resolve(import.meta.dirname, "../..");
 const projectId = "11111111-1111-4111-8111-111111111111";
 const folderId = "22222222-2222-4222-8222-222222222222";
 const fileId = "33333333-3333-4333-8333-333333333333";
-const workspaceURL = `http://127.0.0.1:3000/projects/${projectId}/workspace`;
+const webPort = process.env.CCE_WORKSPACE_TEST_PORT ?? "3100";
+const webOrigin = `http://127.0.0.1:${webPort}`;
+const workspaceURL = `${webOrigin}/projects/${projectId}/workspace`;
 const browserPath = process.env.CCE_BROWSER_PATH ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 
-async function waitForWeb() {
+async function waitForWeb(web) {
   for (let attempt = 0; attempt < 50; attempt++) {
-    try { const response = await fetch("http://127.0.0.1:3000/"); if (response.ok) return; } catch { /* waiting for local Next.js */ }
+    if (web.exitCode !== null) throw new Error(`Test web server exited with code ${web.exitCode}`);
+    try { const response = await fetch(webOrigin); if (response.ok) return; } catch { /* waiting for local Next.js */ }
     await delay(300);
   }
   throw new Error("Next.js did not start");
 }
 
 test("workspace has semantic controls, role limits, and a single editor while switching tabs", { timeout: 120_000 }, async () => {
-  const web = spawn(process.execPath, [resolve(root, "node_modules/next/dist/bin/next"), "start", "apps/web", "--hostname", "127.0.0.1", "--port", "3000"], { cwd: root, stdio: "pipe" });
+  const web = spawn(process.execPath, [resolve(root, "node_modules/next/dist/bin/next"), "start", "apps/web", "--hostname", "127.0.0.1", "--port", webPort], { cwd: root, stdio: "pipe" });
   let browser;
   try {
-    await waitForWeb();
+    await waitForWeb(web);
     browser = await chromium.launch({ executablePath: browserPath, headless: true, args: ["--no-sandbox", "--disable-gpu"] });
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     let role = "owner";
@@ -78,7 +81,7 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     assert.equal(await page.getByRole("button", { name: "Run" }).isDisabled(), true);
     await page.getByRole("button", { name: "File: main.ts" }).click();
     await page.getByRole("tab", { name: "main.ts" }).waitFor();
-    await page.getByText("Live edits are held in worker memory only. They are not saved yet; refresh or a worker restart can lose them.").waitFor();
+    await page.getByText("Saved confirms a server receipt. Unacknowledged edits have no browser draft recovery yet; keep this tab open.").waitFor();
     assert.equal(await page.getByRole("region", { name: "Output panel" }).getByText("Unavailable").count(), 1);
     await page.getByRole("button", { name: "New file" }).click();
     const form = page.getByRole("form", { name: "File tree action" });
@@ -112,9 +115,11 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     await viewer.getByRole("heading", { name: "Explorer" }).waitFor();
     assert.equal(await viewer.getByRole("button", { name: "New file" }).count(), 0, "viewer cannot see metadata write controls");
     await viewer.getByRole("button", { name: "File: main.ts" }).click();
-    await viewer.getByText("Live edits are held in worker memory only. They are not saved yet; refresh or a worker restart can lose them.").waitFor();
+    await viewer.getByText("Saved confirms a server receipt. Unacknowledged edits have no browser draft recovery yet; keep this tab open.").waitFor();
     await viewer.locator(".monaco-editor").waitFor();
     await viewer.setViewportSize({ width: 390, height: 844 });
+    // Monaco's automatic layout uses ResizeObserver; inspect the settled frame.
+    await viewer.waitForFunction(() => document.documentElement.scrollWidth <= window.innerWidth);
     assert.equal(await viewer.getByRole("navigation", { name: "Project files" }).isVisible(), true);
     assert.equal(await viewer.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "narrow layout should fit the viewport");
     await viewer.screenshot({ path: resolve(artifacts, "workspace-narrow.png"), fullPage: true });

@@ -430,8 +430,10 @@ func (a *App) createTreeEntry(w http.ResponseWriter, r *http.Request) {
 		err = tx.QueryRow(r.Context(), `INSERT INTO documents(file_id,generation) VALUES($1,1) RETURNING id::text`, item.ID).Scan(&documentID)
 		if err == nil {
 			checksum := sha256.Sum256(state)
-			_, err = tx.Exec(r.Context(), `INSERT INTO document_snapshots(document_id,through_sequence,encoded_state,state_vector,checksum)
-				VALUES($1,0,$2,$3,$4)`, documentID, state, vector, checksum[:])
+			_, err = tx.Exec(r.Context(), `WITH snapshot AS (
+				INSERT INTO document_snapshots(document_id,through_sequence,encoded_state,state_vector,checksum)
+				VALUES($1,0,$2,$3,$4) RETURNING id
+			) UPDATE documents SET snapshot_id=(SELECT id FROM snapshot) WHERE id=$1`, documentID, state, vector, checksum[:])
 		}
 		if err == nil {
 			_, err = tx.Exec(r.Context(), `UPDATE files SET current_document_id=$2 WHERE id=$1`, item.ID, documentID)

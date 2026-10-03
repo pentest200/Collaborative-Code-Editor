@@ -3,7 +3,7 @@ info:
   title: Collaborative Code Editor API contract
   version: 0.1.0
   description: >-
-    Phase 03 implements health, identity, projects, memberships, file-tree metadata, and volatile realtime collaboration through the separate WebSocket contract.
+    Phase 04 implements health, identity, projects, memberships, file-tree metadata, and durable realtime collaboration through the separate WebSocket contract.
     Durable editing receipts, checkpoints, runs, and search remain reserved for later phases.
 servers:
   - url: /

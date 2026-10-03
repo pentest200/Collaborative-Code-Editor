@@ -89,7 +89,7 @@ footer { border-top: 1px solid #2b3544; color: #a9b5c7; margin-top: 3rem; paddin
 .tab-item button:hover { background: #2b4058; }
 .editor-breadcrumb { min-height: 31px; display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 0 1rem; color: #a8b9cc; font-size: .76rem; border-bottom: 1px solid #263345; }
 .editor-breadcrumb span { color: #dfbd86; }
-.monaco-shell { position: relative; flex: 1; min-height: 170px; }
+.monaco-shell { position: relative; flex: 1; min-height: 170px; overflow: hidden; }
 .monaco-host { width: 100%; height: 100%; }
 .editor-loading { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; margin: 0; background: #111720; color: #aec0d5; }
 .editor-empty { flex: 1; min-height: 170px; display: grid; place-content: center; text-align: center; color: #aebed0; padding: 1rem; }

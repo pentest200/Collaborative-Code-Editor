@@ -40,24 +40,10 @@ function nextFrame(socket: WebSocket, expected: FrameType): Promise<Uint8Array> 
   });
 }
 
-function frames(socket: WebSocket, expected: FrameType, count: number): Promise<Uint8Array[]> {
-  return new Promise((resolve, reject) => {
-    const found: Uint8Array[] = [];
-    const timeout = setTimeout(() => { socket.off("message", handle); reject(new Error("frames timeout")); }, 5000);
-    const handle = (raw: Buffer) => {
-      const frame = decodeEnvelope(new Uint8Array(raw), "server");
-      if (frame.type !== expected) return;
-      found.push(frame.body);
-      if (found.length === count) { clearTimeout(timeout); socket.off("message", handle); resolve(found); }
-    };
-    socket.on("message", handle);
-  });
-}
-
-test("Phase 03 private rooms reject raw viewer writes and converge volatile edits", { skip: !databaseURL }, async () => {
+test("Phase 04 private rooms reject raw viewer writes and converge durable edits", { skip: !databaseURL }, async () => {
   const pool = new Pool({ connectionString: databaseURL });
   const server = createServer((_request, response) => response.writeHead(404).end());
-  const service = attachRealtime(server, databaseURL!, secret);
+  const service = attachRealtime(server, process.env.TEST_COLLAB_DATABASE_URL ?? databaseURL!, secret);
   server.listen(0, "127.0.0.1"); await once(server, "listening");
   const port = (server.address() as { port: number }).port;
   const sockets: WebSocket[] = [];
@@ -104,9 +90,9 @@ test("Phase 03 private rooms reject raw viewer writes and converge volatile edit
     const denied = nextFrame(third, FrameType.ERROR); third.send(frameUpdate(updateA));
     assert.equal(JSON.parse(Buffer.from(await denied).toString()).code, "FORBIDDEN");
     const duplicateFrame = frameUpdate(updateA);
-    const receivedA = nextFrame(second, FrameType.PENDING_UPDATE); first.send(duplicateFrame); await receivedA;
+    const receivedA = nextFrame(second, FrameType.UPDATE_COMMITTED); first.send(duplicateFrame); await receivedA;
     first.send(duplicateFrame);
-    const receivedB = nextFrame(first, FrameType.PENDING_UPDATE); second.send(frameUpdate(updateB)); await receivedB;
+    const receivedB = nextFrame(first, FrameType.UPDATE_COMMITTED); second.send(frameUpdate(updateB)); await receivedB;
     const mismatch = nextFrame(first, FrameType.ERROR);
     const changed = Uint8Array.from(duplicateFrame); changed[changed.length - 1] ^= 1;
     changed.set(createHash("sha256").update(changed.subarray(70)).digest(), 38);
@@ -115,20 +101,20 @@ test("Phase 03 private rooms reject raw viewer writes and converge volatile edit
     const causal = new Y.Doc(); const causalUpdates: Uint8Array[] = [];
     causal.on("update", (bytes: Uint8Array) => causalUpdates.push(bytes));
     causal.getText("content").insert(0, "one"); causal.getText("content").insert(3, "two");
-    const delayed = nextFrame(second, FrameType.PENDING_UPDATE); first.send(frameUpdate(causalUpdates[1])); await delayed;
-    const leading = nextFrame(second, FrameType.PENDING_UPDATE); first.send(frameUpdate(causalUpdates[0])); await leading;
+    const delayed = nextFrame(second, FrameType.UPDATE_COMMITTED); first.send(frameUpdate(causalUpdates[1])); await delayed;
+    const leading = nextFrame(second, FrameType.UPDATE_COMMITTED); first.send(frameUpdate(causalUpdates[0])); await leading;
     const unauthenticated = new WebSocket(`ws://127.0.0.1:${port}/internal/ws/documents/${document}`);
     assert.equal(await new Promise<number>((resolve, reject) => { unauthenticated.once("unexpected-response", (_request, response) => resolve(response.statusCode ?? 0)); unauthenticated.once("open", () => reject(new Error("direct worker access allowed"))); unauthenticated.once("error", reject); }), 403);
     const syncClient = await connect(owner, session, "owner");
     const committed = nextFrame(syncClient, FrameType.SYNC_STATE);
-    const pending = frames(syncClient, FrameType.PENDING_UPDATE, 4);
+
     syncClient.send(encodeEnvelope(FrameType.SYNC_REQUEST, Y.encodeStateVector(new Y.Doc())));
     const sync = await committed;
     const vectorLength = new DataView(sync.buffer, sync.byteOffset).getUint32(8);
     const updateLength = new DataView(sync.buffer, sync.byteOffset).getUint32(12 + vectorLength);
     const replay = new Y.Doc(); replay.getText("content");
     Y.applyUpdate(replay, sync.subarray(16 + vectorLength, 16 + vectorLength + updateLength));
-    for (const body of await pending) Y.applyUpdate(replay, body.subarray(64));
+
     assert.equal(replay.getText("content").length, 8);
     assert.ok(replay.getText("content").toString().includes("A"));
     assert.ok(replay.getText("content").toString().includes("B"));
@@ -149,7 +135,7 @@ test("Phase 03 private rooms reject raw viewer writes and converge volatile edit
     assert.equal(JSON.parse(Buffer.from(await richError).toString()).code, "LIMIT_EXCEEDED");
     rich.destroy();
     const count = await pool.query("SELECT count(*)::int AS count FROM document_updates WHERE document_id=$1", [document]);
-    assert.equal(count.rows[0].count, 0, "Phase 03 must not claim durable writes");
+    assert.equal(count.rows[0].count, 4, "One durable row per identified input");
   } finally {
     for (const socket of sockets) socket.terminate();
     await service.close(); await new Promise<void>((resolve) => server.close(() => resolve())); await pool.end();

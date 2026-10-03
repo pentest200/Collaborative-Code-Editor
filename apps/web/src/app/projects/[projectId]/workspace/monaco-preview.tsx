@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type * as Monaco from "monaco-editor";
-import { MonacoBinding } from "y-monaco";
+import type { MonacoBinding } from "y-monaco";
 import { DocumentProvider, type ConnectionState } from "@/collaboration/provider";
 
 export type PreviewFile = { id: string; document_id: string | null; name: string; language: string | null };
@@ -12,6 +12,7 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<Editor | null>(null);
   const monaco = useRef<typeof Monaco | null>(null);
+  const bindingConstructor = useRef<typeof MonacoBinding | null>(null);
   const provider = useRef<DocumentProvider | null>(null);
   const binding = useRef<MonacoBinding | null>(null);
   const model = useRef<Monaco.editor.ITextModel | null>(null);
@@ -27,7 +28,8 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
 
   const selectModel = useCallback(() => {
     const instance = editor.current; const library = monaco.current; const item = selected.current;
-    if (!instance || !library) return;
+    const Binding = bindingConstructor.current;
+    if (!instance || !library || !Binding) return;
     if (item?.document_id === connectedID.current) {
       if (item && model.current) library.editor.setModelLanguage(model.current, item.language ?? "plaintext");
       return;
@@ -42,11 +44,11 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
     model.current = nextModel;
     const nextProvider = new DocumentProvider(item.document_id, (state) => {
       if (provider.current !== nextProvider) return;
-      instance.updateOptions({ readOnly: !writable.current || !nextProvider.isSynced || state === "Access changed" || state === "Disconnected · edits not retained" || state === "Collaboration unavailable" });
+      instance.updateOptions({ readOnly: !writable.current || !nextProvider.isSynced || !["Synced", "Saving", "Saved"].includes(state) });
       stateCallback.current(state);
     });
     provider.current = nextProvider;
-    binding.current = new MonacoBinding(nextProvider.doc.getText("content"), nextModel, new Set([instance]));
+    binding.current = new Binding(nextProvider.doc.getText("content"), nextModel, new Set([instance]));
     instance.setModel(nextModel); instance.updateOptions({ readOnly: true });
     connectedID.current = item.document_id; stateCallback.current("Connecting");
   }, [projectId]);
@@ -66,6 +68,7 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
           return new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url), { type: "module" });
         } };
         const library = await import("monaco-editor/esm/vs/editor/editor.api");
+        const { MonacoBinding: Binding } = await import("y-monaco");
         await Promise.all([
           import("monaco-editor/esm/vs/language/typescript/monaco.contribution"), import("monaco-editor/esm/vs/language/json/monaco.contribution"),
           import("monaco-editor/esm/vs/language/css/monaco.contribution"), import("monaco-editor/esm/vs/language/html/monaco.contribution"),
@@ -74,6 +77,7 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
         ]);
         if (cancelled || !host.current) return;
         monaco.current = library;
+        bindingConstructor.current = Binding;
         library.editor.defineTheme("cce-dark", { base: "vs-dark", inherit: true, rules: [], colors: { "editor.background": "#111720", "editor.foreground": "#e1e8f2", "editorLineNumber.foreground": "#65778d", "editorCursor.foreground": "#9bc2ff" } });
         editor.current = library.editor.create(host.current, { theme: "cce-dark", readOnly: true, automaticLayout: true, minimap: { enabled: false }, scrollBeyondLastLine: false, fontSize: 14, lineHeight: 23, fontFamily: "Consolas, 'SFMono-Regular', monospace", ariaLabel: "Collaborative code editor" });
         subscription = editor.current.onDidChangeCursorPosition((event) => cursorCallback.current(event.position.lineNumber, event.position.column));
@@ -82,7 +86,7 @@ export default function MonacoPreview({ projectId, file, canEdit, onCursor, onSt
     })();
     return () => {
       cancelled = true; subscription?.dispose(); binding.current?.destroy(); provider.current?.close(); model.current?.dispose(); editor.current?.dispose();
-      binding.current = null; provider.current = null; model.current = null; editor.current = null; monaco.current = null; connectedID.current = "";
+      binding.current = null; bindingConstructor.current = null; provider.current = null; model.current = null; editor.current = null; monaco.current = null; connectedID.current = "";
     };
   }, [selectModel]);
 
