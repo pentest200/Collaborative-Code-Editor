@@ -43,6 +43,7 @@ func main() {
 			log.Fatal("private artifact bucket unavailable")
 		}
 		app.client.Timeout = 40 * time.Second
+		go app.runExecutionJobs(workerCtx)
 		app.runCheckpointJobs(workerCtx)
 		return
 	}
@@ -52,5 +53,11 @@ func main() {
 		MaxHeaderBytes: 16 << 10,
 	}
 	log.Printf("api listening on %s", cfg.ListenAddr)
+	if cfg.RunnerToken != "" {
+		go func() {
+			control := &http.Server{Addr: cfg.RunnerListen, Handler: app.runnerRoutes(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second, MaxHeaderBytes: 4096}
+			log.Fatal(control.ListenAndServe())
+		}()
+	}
 	log.Fatal(server.ListenAndServe())
 }

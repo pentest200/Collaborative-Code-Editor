@@ -8,6 +8,8 @@ import (
 )
 
 type Config struct {
+	RunnerToken       string
+	RunnerListen      string
 	Environment       string
 	ListenAddr        string
 	DatabaseURL       string
@@ -29,6 +31,8 @@ type Config struct {
 
 func loadConfig() (Config, error) {
 	c := Config{
+		RunnerToken:       os.Getenv("RUNNER_INTERNAL_TOKEN"),
+		RunnerListen:      envOr("RUNNER_CONTROL_LISTEN", "127.0.0.1:8082"),
 		Environment:       os.Getenv("APP_ENV"),
 		ListenAddr:        envOr("API_LISTEN_ADDR", "127.0.0.1:8080"),
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
@@ -47,6 +51,9 @@ func loadConfig() (Config, error) {
 	}
 	if c.Environment != "development" && c.Environment != "production" {
 		return c, errors.New("APP_ENV must be development or production")
+	}
+	if c.RunnerToken != "" && (c.Environment != "development" || len(c.RunnerToken) < 32) {
+		return c, errors.New("execution requires development/private-demo mode and a runner token of at least 32 bytes")
 	}
 	if c.DatabaseURL == "" {
 		return c, errors.New("DATABASE_URL is required")

@@ -27,6 +27,7 @@ function missingState(local: Y.Doc, represented: Y.Doc) {
 }
 
 export class DocumentProvider {
+  static readonly active = new Set<DocumentProvider>();
   readonly doc = new Y.Doc();
   readonly awareness = new Awareness(this.doc);
   readonly store: DraftStore;
@@ -41,6 +42,7 @@ export class DocumentProvider {
   private localWork = 0;
   private localBytes = 0;
   private closed = false;
+  private transportPaused = false;
   private discarded = false;
   private terminal: ConnectionState | null = null;
   private storageFailure = false;
@@ -59,6 +61,7 @@ export class DocumentProvider {
   detail = "Restoring the account-scoped browser draft.";
 
   constructor(readonly scope: DraftScope, canEdit: boolean, private onState: (state: ConnectionState) => void) {
+    DocumentProvider.active.add(this);
     this.writable = canEdit; this.store = new DraftStore(scope); this.doc.getText("content"); this.committed.getText("content");
     this.awareness.setLocalState(null);
     this.doc.on("update", this.localUpdate); this.awareness.on("update", this.awarenessUpdate);
@@ -133,7 +136,7 @@ export class DocumentProvider {
     this.run(async () => { if (!this.discarded) { await this.store.freeze(reason); this.notifyDraft(); } });
   }
   private async connect() {
-    if (this.closed || this.terminal || this.storageFailure || this.socket || this.connecting) return;
+    if (this.closed || this.transportPaused || this.terminal || this.storageFailure || this.socket || this.connecting) return;
     this.connecting = true;
     try {
       const signal = AbortSignal.timeout(5000);
@@ -154,7 +157,7 @@ export class DocumentProvider {
       if (!file || file.document_id !== this.scope.documentID || file.generation !== this.scope.generation) { this.deny("Version replaced/deleted"); return; }
       this.writable = metadata.role === "owner" || metadata.role === "editor";
       if (!this.writable && this.pending.length) { this.deny("Access changed"); return; }
-      if (this.closed || this.terminal) return;
+      if (this.closed || this.transportPaused || this.terminal) return;
       const endpoint = new URL(`/ws/documents/${this.scope.documentID}`, location.href); endpoint.protocol = endpoint.protocol === "https:" ? "wss:" : "ws:";
       const socket = new WebSocket(endpoint); this.socket = socket; socket.binaryType = "arraybuffer";
       this.deadline = setTimeout(() => { if (!this.synced) socket.close(); }, 10000);
@@ -166,7 +169,7 @@ export class DocumentProvider {
     finally { this.connecting = false; }
   }
   private schedule() {
-    if (this.closed || this.terminal || this.storageFailure) return;
+    if (this.closed || this.transportPaused || this.terminal || this.storageFailure) return;
     clearTimeout(this.retry);
     const delay = Math.min(10000, 300 * 2 ** Math.min(this.attempt++, 6)) * (0.75 + Math.random() * 0.5);
     this.retry = setTimeout(() => { void this.connect(); }, delay);
@@ -262,12 +265,26 @@ export class DocumentProvider {
     const socket = this.socket; this.socket = null; this.synced = false; this.sent.clear();
     clearTimeout(this.deadline); clearTimeout(this.receiptDeadline); socket?.close(); this.clearPeers();
   }
-  get canType() { return this.storageReady && this.initialized && this.writable && !this.storageFailure && !this.terminal && !this.closed; }
+  get canType() { return this.storageReady && this.initialized && this.writable && !this.transportPaused && !this.storageFailure && !this.terminal && !this.closed; }
   get isSynced() { return this.synced && !this.terminal && !this.closed; }
   get status() { return this.state; }
+  pauseTransport() { this.transportPaused = true; clearTimeout(this.retry); clearTimeout(this.pumpTimer); this.pumpTimer = undefined; this.disconnect(); this.publish(); }
+  resumeTransport() { if (!this.transportPaused) return; this.transportPaused = false; void this.connect(); }
+  async waitForReceipts(timeout = 30000) {
+    const end = Date.now() + timeout;
+    while (Date.now() < end) {
+      await this.queue;
+      if (this.closed || this.terminal || this.storageFailure) throw new Error("Run stopped: local edits could not be saved. Recover or download the draft.");
+      if (this.synced && !this.localWork && !this.pending.length && !this.sent.size) return;
+      this.pump();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error("Run stopped while waiting for durable edit receipts. Reconnect and try again.");
+  }
   invalidateGeneration() { this.deny("Version replaced/deleted"); }
   close() {
     if (this.closed) return;
+    DocumentProvider.active.delete(this);
     this.awareness.setLocalState(null); this.sendAwareness(); this.closed = true;
     clearTimeout(this.retry); clearTimeout(this.pumpTimer); clearTimeout(this.awarenessTimer); this.disconnect();
     window.removeEventListener("online", this.online); window.removeEventListener("cce-logout", this.localLogout); this.channel.close();

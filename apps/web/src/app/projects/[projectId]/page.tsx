@@ -69,6 +69,6 @@ export default function ProjectPage() {
       {project.role === "owner" && <section className="panel"><h2>Invite someone</h2><p>Create a one-use link valid for seven days. Share it privately.</p><div className="form-row"><select aria-label="Invitation role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as "editor" | "viewer")}><option value="editor">Editor</option><option value="viewer">Viewer</option></select><button type="button" disabled={busy} onClick={createInvite}>Create invite link</button></div>{invite && <div className="invite-result"><label htmlFor="invite-link">One-use invite link</label><input id="invite-link" readOnly value={typeof window === "undefined" ? "" : `${window.location.origin}/invite/${invite.token}`} onFocus={(event) => event.target.select()} /><small>Shown only now. Expires {new Date(invite.expires_at).toLocaleDateString()}.</small></div>}</section>}
     </> : !error && <p>Project unavailable.</p>}
     {error && <p role="alert" className="error">{error}</p>}
-    <footer>Collaborative editing and checkpoints are available in the workspace. Code execution is still unfinished.</footer>
+    <footer>Collaborative editing and checkpoints are available in the workspace. Private-demo runs require execution to be enabled.</footer>
   </main>;
 }

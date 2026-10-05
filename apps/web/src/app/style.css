@@ -100,6 +100,14 @@ footer { border-top: 1px solid #2b3544; color: #a9b5c7; margin-top: 3rem; paddin
 .output-heading { min-height: 38px; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #2b394d; padding: 0 1rem; font-size: .78rem; }
 .output-heading strong { color: #e0e9f5; text-transform: uppercase; letter-spacing: .08em; }
 .output-panel p { padding: 0 1rem; font-size: .82rem; }
+.output-panel form { display: flex; flex-wrap: wrap; gap: .7rem; align-items: end; padding: .7rem 1rem; }
+.output-panel label { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; }
+.output-panel textarea { height: 45px; max-width: 260px; }
+.output-panel select { max-width: 260px; }
+.output-panel pre { padding: .5rem 1rem; white-space: pre-wrap; overflow-wrap: anywhere; font: .85rem/1.5 Consolas, monospace; }
+.output-panel code { overflow-wrap: anywhere; }
+.run-output { height: 250px; }
+.run-control { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
 .workspace-status { flex: none; min-height: 27px; margin: 0; padding: .32rem .7rem; border: 0; display: flex; align-items: center; gap: 1.3rem; background: #263c58; color: #e4eefb; font-size: .72rem; }
 .workspace-status span:last-child { margin-left: auto; }
 .workspace-error { position: fixed; right: 1rem; bottom: 2.5rem; z-index: 10; max-width: 440px; background: #543039; border: 1px solid #a56b75; color: #ffe1e1; padding: .75rem 1rem; display: flex; align-items: center; gap: .7rem; border-radius: .4rem; box-shadow: 0 10px 30px #0008; }

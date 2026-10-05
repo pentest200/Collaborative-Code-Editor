@@ -54,9 +54,10 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [github_enabled]
+                required: [github_enabled, execution_enabled]
                 properties:
                   github_enabled: { type: boolean }
+                  execution_enabled: { type: boolean, description: Explicitly configured restricted private-demo execution }
   /api/v1/auth/github/callback:
     get:
       tags: [identity]
@@ -415,7 +416,11 @@ paths:
                 entrypoint: { type: string, minLength: 1, maxLength: 1024 }
                 stdin: { type: string, maxLength: 16384 }
       responses:
-        '202': { description: Capturing immutable input }
+        '202': { description: Capturing immutable input or replaying the original identical idempotent request }
+        '400': { description: Invalid runtime/manifest path or stdin exceeds 16 KiB UTF-8 }
+        '409': { description: Idempotency key already used with different input }
+        '429': { description: One active job per user and per project }
+        '503': { description: Execution not configured or durable capture unavailable }
         '403': { $ref: '#/components/responses/Error' }
   /api/v1/projects/{project_id}/runs/{run_id}:
     parameters:
@@ -426,11 +431,11 @@ paths:
       x-implementation-phase: '07'
       security: [{ sessionCookie: [] }]
       responses:
-        '200': { description: Authorized immutable input checkpoint, status and exit metadata }
+        '200': { description: Authorized immutable input checkpoint, status and exit metadata, content: { application/json: { schema: { $ref: '#/components/schemas/Run' } } } }
     delete:
       tags: [runs]
       x-implementation-phase: '07'
-      summary: Request cancellation; terminal jobs remain terminal
+      summary: Owner/editor requests cancellation; terminal jobs remain terminal
       security: [{ sessionCookie: [], csrfHeader: [] }]
       responses:
         '202': { description: Cancellation requested }
@@ -446,7 +451,7 @@ paths:
         - { name: after, in: query, required: false, schema: { $ref: '#/components/schemas/DecimalSequence' } }
       responses:
         '200':
-          description: SSE events with decimal IDs and bounded stdout/stderr/status payloads
+          description: SSE events with decimal IDs and bounded stdout/stderr/status payloads; after or Last-Event-ID resumes; current membership/session rechecked every 500ms; streams rotate after 30s
           content:
             text/event-stream:
               schema: { type: string }
@@ -488,6 +493,23 @@ components:
         state: { type: string, enum: [captured, materializing, ready, failed] }
         captured_tree_version: { $ref: '#/components/schemas/DecimalSequence' }
         created_at: { type: string, format: date-time }
+        failure_code: { type: [string, 'null'] }
+    Run:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, checkpoint_id, runtime, entrypoint, state, attempt, event_sequence, cancel_requested, truncated, exit_code, failure_code]
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        checkpoint_id: { type: string, format: uuid }
+        runtime: { type: string, enum: [python, javascript] }
+        entrypoint: { type: string }
+        state: { type: string, enum: [capturing, queued, running, succeeded, failed, timed_out, cancelled] }
+        attempt: { type: integer, minimum: 0 }
+        event_sequence: { $ref: '#/components/schemas/DecimalSequence' }
+        cancel_requested: { type: boolean }
+        truncated: { type: boolean }
+        exit_code: { type: [integer, 'null'] }
         failure_code: { type: [string, 'null'] }
     User:
       type: object

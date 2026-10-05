@@ -54,6 +54,10 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/retry", a.retryCheckpoint)
 	mux.HandleFunc("POST /api/v1/projects/{project_id}/checkpoints/{checkpoint_id}/restore", a.restoreCheckpoint)
 	mux.HandleFunc("GET /ws/projects/{project_id}", a.projectSocket)
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/runs", a.createRun)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/runs/{run_id}", a.getRun)
+	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/runs/{run_id}", a.cancelRun)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/runs/{run_id}/events", a.runEvents)
 	return mux
 }
 
@@ -62,7 +66,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a *App) authConfig(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, 200, map[string]bool{"github_enabled": a.cfg.ClientID != ""})
+	writeJSON(w, 200, map[string]bool{"github_enabled": a.cfg.ClientID != "", "execution_enabled": a.cfg.RunnerToken != ""})
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

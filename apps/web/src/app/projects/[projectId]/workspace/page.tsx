@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MonacoPreview from "./monaco-preview";
 import Checkpoints from "./checkpoints";
+import Runs from "./runs";
 import type { ConnectionState } from "@/collaboration/provider";
 import { DraftRecovery } from "@/collaboration/draft-recovery";
 
@@ -52,6 +53,9 @@ export default function WorkspacePage() {
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const [connection, setConnection] = useState<ConnectionState>("Connecting");
   const [checkpointsOpen, setCheckpointsOpen] = useState(false);
+  const [runsOpen, setRunsOpen] = useState(false);
+  const [runBusy, setRunBusy] = useState(false);
+  const [executionEnabled, setExecutionEnabled] = useState(false);
   const eventSequence = useRef("0");
 
   const loadTree = useCallback(async () => {
@@ -69,7 +73,8 @@ export default function WorkspacePage() {
     let active = true;
     (async () => {
       try {
-        const [sessionResponse, projectResponse] = await Promise.all([fetch("/api/v1/session", { cache: "no-store" }), fetch(base, { cache: "no-store" })]);
+        const [sessionResponse, projectResponse, configResponse] = await Promise.all([fetch("/api/v1/session", { cache: "no-store" }), fetch(base, { cache: "no-store" }), fetch("/api/v1/auth/config", { cache: "no-store" })]);
+        if (configResponse.ok) { const config = await configResponse.json() as { execution_enabled?: boolean }; if (active) setExecutionEnabled(config.execution_enabled === true); }
         if (!sessionResponse.ok) throw new Error("Sign in to view this workspace.");
         const authenticated = await sessionResponse.json() as Session;
         if (active) setSession(authenticated);
@@ -132,6 +137,7 @@ export default function WorkspacePage() {
   const canEdit = project?.role === "owner" || project?.role === "editor";
 
   function openEntry(entry: Entry) {
+    if (runBusy) return;
     setSelectedId(entry.id);
     if (entry.kind === "folder") { setCollapsed((previous) => { const next = new Set(previous); if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id); return next; }); return; }
     setTabs((current) => current.includes(entry.id) ? current : [...current, entry.id]);
@@ -140,6 +146,7 @@ export default function WorkspacePage() {
   }
 
   function closeTab(id: string) {
+    if (runBusy) return;
     setTabs((current) => {
       const next = current.filter((item) => item !== id);
       if (activeId === id) setActiveId(next.at(-1) ?? "");
@@ -189,7 +196,7 @@ export default function WorkspacePage() {
   if (!project || !tree) return <main className="workspace-gate"><Link href="/">← Projects</Link><h1>Workspace unavailable</h1><p role="alert">{error || "Could not load this project."}</p>{session && <DraftRecovery userID={session.user.id} projectID={projectId} />}</main>;
 
   return <main className="workspace">
-    <header className="workspace-topbar"><div className="workspace-title"><Link href="/" aria-label="Back to projects">←</Link><span className="workspace-logo">CCE</span><strong>{project.name}</strong><span className="workspace-state">{activeFile ? connection : "File tree ready"}</span></div><nav aria-label="Project actions"><Link href={`/projects/${projectId}`}>Team</Link>{project.role === "owner" && <Link href={`/projects/${projectId}`}>Share</Link>}<button type="button" onClick={() => setCheckpointsOpen((open) => !open)} aria-expanded={checkpointsOpen}>Checkpoints</button><button type="button" disabled title="Code execution is not available yet">Run</button></nav></header>
+    <header className="workspace-topbar"><div className="workspace-title"><Link href="/" aria-label="Back to projects">←</Link><span className="workspace-logo">CCE</span><strong>{project.name}</strong><span className="workspace-state">{activeFile ? connection : "File tree ready"}</span></div><nav aria-label="Project actions"><Link href={`/projects/${projectId}`}>Team</Link>{project.role === "owner" && <Link href={`/projects/${projectId}`}>Share</Link>}<button type="button" onClick={() => setCheckpointsOpen((open) => !open)} aria-expanded={checkpointsOpen}>Checkpoints</button><button type="button" disabled={!canEdit || runBusy || !executionEnabled} title={executionEnabled ? "Run committed source in the restricted private demo" : "Execution is unavailable in this workspace"} onClick={() => setRunsOpen((open) => !open)} aria-expanded={runsOpen}>Run</button></nav></header>
     <div className="workspace-body">
       <aside className="explorer" aria-label="File explorer"><div className="explorer-heading"><h2>Explorer</h2><span>{tree.entries.length} entries</span></div><label className="sr-only" htmlFor="file-search">Find files</label><input id="file-search" type="search" placeholder="Find files" value={query} onChange={(event) => setQuery(event.target.value)} />
         {session && <DraftRecovery userID={session.user.id} projectID={projectId} />}
@@ -199,8 +206,8 @@ export default function WorkspacePage() {
         <nav aria-label="Project files" className="tree-list">{rows.length ? rows.map(({ entry, depth }) => <button key={entry.id} type="button" className={`tree-row${selectedId === entry.id ? " selected" : ""}`} style={{ paddingLeft: `${12 + depth * 17}px` }} onClick={() => openEntry(entry)} aria-label={`${entry.kind === "folder" ? "Folder" : "File"}: ${entry.name}`}><span aria-hidden="true">{entry.kind === "folder" ? collapsed.has(entry.id) ? "▸" : "▾" : "·"}</span><span>{entry.name}</span></button>) : <p className="explorer-empty">{query ? "No matching files." : "No files yet. Create a file or folder to begin."}</p>}</nav>
       </aside>
       <section className="editor-area" aria-label="Code preview"><div className="tab-strip" role="tablist" aria-label="Open files">{tabs.map((id) => { const item = tree.entries.find((entry) => entry.id === id); return item && <div key={id} className={`tab-item${activeId === id ? " active" : ""}`}><button type="button" role="tab" aria-selected={activeId === id} onClick={() => setActiveId(id)}>{item.name}</button><button type="button" aria-label={`Close ${item.name}`} onClick={() => closeTab(id)}>×</button></div>; })}</div>
-        {activeFile && session ? <><div className="editor-breadcrumb">{activeFile.name}<span>{connection}</span></div><MonacoPreview userId={session.user.id} projectId={projectId} file={activeFile} canEdit={Boolean(canEdit)} onState={setConnection} onCursor={(line, column) => setCursor({ line, column })} /><div className="editor-notice">Saved confirms server receipts. Offline draft retention completes after browser storage succeeds; download your draft if storage fails.</div></> : <div className="editor-empty"><div className="empty-glyph">{`{ }`}</div><h2>Choose a file</h2><p>Browse the project tree, or create a file to open its code preview.</p></div>}
-        <section className="output-panel" aria-label="Output panel"><div className="output-heading"><strong>Output</strong><span>Unavailable</span></div><p>Code execution and output will appear here when runs are available.</p></section>
+        {activeFile && session ? <><div className="editor-breadcrumb">{activeFile.name}<span>{connection}</span></div><MonacoPreview userId={session.user.id} projectId={projectId} file={activeFile} canEdit={Boolean(canEdit) && !runBusy} onState={setConnection} onCursor={(line, column) => setCursor({ line, column })} /><div className="editor-notice">Saved confirms server receipts. Offline draft retention completes after browser storage succeeds; download your draft if storage fails.</div></> : <div className="editor-empty"><div className="empty-glyph">{`{ }`}</div><h2>Choose a file</h2><p>Browse the project tree, or create a file to open its code preview.</p></div>}
+        {session && executionEnabled ? <Runs projectID={projectId} userID={session.user.id} csrf={session.csrf_token} canEdit={Boolean(canEdit)} files={tree.entries} open={runsOpen} onBusy={setRunBusy} onStart={() => setRunsOpen(false)} /> : <section className="output-panel" aria-label="Output panel"><div className="output-heading"><strong>Output</strong><span>Unavailable</span></div><p>Runs are not enabled for this workspace.</p></section>}
       </section>
       {checkpointsOpen && session && <Checkpoints projectId={projectId} role={project.role} csrf={session.csrf_token} treeVersion={tree.tree_version} onRestore={loadTree} onClose={() => setCheckpointsOpen(false)} />}
     </div>

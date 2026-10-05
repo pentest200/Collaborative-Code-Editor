@@ -20,6 +20,8 @@
     "test:realtime": "node --test tests/e2e/realtime.test.mjs",
     "test:recovery": "node --test tests/e2e/recovery.test.mjs",
     "test:checkpoints": "node --test tests/e2e/checkpoints.test.mjs",
+    "test:execution": "node --test tests/integration/execution.test.mjs",
+    "test:runs": "node --test tests/e2e/runs.test.mjs",
     "dev:web": "npm run dev -w @cce/web",
     "dev:collab": "npm run dev -w @cce/collab"
   },

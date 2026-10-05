@@ -1,0 +1,27 @@
+# Explicitly opt into private-demo execution on a designated Linux Docker host.
+services:
+  api:
+    environment:
+      RUNNER_INTERNAL_TOKEN: ${RUNNER_INTERNAL_TOKEN:?set a private runner control token}
+      RUNNER_CONTROL_LISTEN: 0.0.0.0:8082
+    networks: [public, private, execution-control]
+  runner:
+    build:
+      context: ../..
+      dockerfile: services/runner/Dockerfile
+    environment:
+      RUNNER_CONTROL_ORIGIN: http://api:8082
+      RUNNER_INTERNAL_TOKEN: ${RUNNER_INTERNAL_TOKEN:?set a private runner control token}
+      RUNNER_WORK_VOLUME: cce-runner-work
+      RUNNER_PYTHON_IMAGE: ${RUNNER_PYTHON_IMAGE:?prebuild Python and set its sha256 image ID}
+      RUNNER_JAVASCRIPT_IMAGE: ${RUNNER_JAVASCRIPT_IMAGE:?prebuild JavaScript and set its sha256 image ID}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-work:/runs
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [execution-control]
+networks:
+  execution-control: {internal: true}
+volumes:
+  runner-work: {name: cce-runner-work}

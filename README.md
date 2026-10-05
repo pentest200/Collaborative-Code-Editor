@@ -1,6 +1,6 @@
 # Collaborative Code Editor
 
-Phase 06 adds consistent named checkpoints, private MinIO artifacts, preview/download and owner-only restore with fresh document generations. Browser drafts, identified outbox replay, automatic reconnect, authenticated relative cursors and selective local undo remain available. [The specification](PROJECT_SPEC.md) defines the intended release; [implementation status](docs/implementation-status.md) records actual verification and remaining gaps.
+Phase 07 adds restricted private-demo Python/JavaScript runs from verified immutable checkpoints, bounded Output/stdin, timeout and cancellation. The browser waits for durable edit receipts before capturing input. Collaboration, retained drafts and generation-safe checkpoint restore remain available. [The specification](PROJECT_SPEC.md) defines the intended release; [implementation status](docs/implementation-status.md) records actual verification and remaining gaps. Execution is opt-in on a designated local Docker environment; base Compose leaves Run unavailable.
 
 ## Development
 
@@ -28,12 +28,13 @@ Download visible draft exports current text even after a storage failure. Recove
 
 Use Checkpoints in the workspace to capture committed server state; local unreceipted drafts are excluded. Owners/editors can capture and retry failed materializations; current members can preview/download ready checkpoints. Owner restore verifies all artifacts and prepares fresh Yjs documents, then atomically captures the latest previous committed state and replaces the tree/generations. Previous-state preview waits for its independent materializer to succeed. Connected clients rebind; old queued/offline updates remain separate downloadable drafts and never merge into restored text. See [checkpoint contract](contracts/checkpoints.md).
 
-File creation needs the private collaboration process for empty Yjs state initialization. `GET /api/v1/healthz` and the private `/internal/healthz` report process liveness. `docker compose -f infra/compose/compose.yaml down` preserves the database and artifact volumes. Fresh volumes apply all canonical migrations automatically; existing volumes require missing migrations in order. An existing Phase 03 volume needs 0004, 0005, 0006 and the local worker login; a Phase 05 volume needs only 0006:
+File creation needs the private collaboration process for empty Yjs state initialization. `GET /api/v1/healthz` and the private `/internal/healthz` report process liveness. `docker compose -f infra/compose/compose.yaml down` preserves the database and artifact volumes. Fresh volumes apply all canonical migrations automatically; existing volumes require missing migrations in order. An existing Phase 03 volume needs 0004, 0005, 0006, 0007 and the local worker login; a Phase 05 volume needs 0006/0007, and a Phase 06 volume needs only 0007:
 
 ```sh
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0004_document_durability.sql
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0005_awareness_identity.sql
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0006_checkpoints.sql
+docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0007_runs.sql
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /local-collab-login.sql
 ```
 
@@ -55,9 +56,11 @@ For separate local processes, set `APP_ENV=development`, `PUBLIC_ORIGIN=http://l
 
 MinIO is built from a pinned official source release because pulls from its former official image registries were rejected. The base stack publishes neither storage nor its console; the test override publishes only localhost:9000. The `jobs` service provisions the private local bucket, with no anonymous policy. Its persistent PostgreSQL claims/outbox and deterministic UUID artifacts make upload and database failures retryable. See [worker notes](services/jobs/README.md).
 
-Go's Phase 06 integration test additionally needs `TEST_COLLAB_ORIGIN` and `TEST_ARTIFACT_ENDPOINT` pointing to real services. It controls the materializer queue, so stop the separate `jobs` service while running that suite, then restart it before `test:checkpoints`. Linux container tests can use `http://collab:8081`, `http://minio:9000` and the private Compose network. Without these prerequisites the integration test explicitly skips; that is not acceptance evidence.
+Go's Phase 06 integration test additionally needs `TEST_COLLAB_ORIGIN` and `TEST_ARTIFACT_ENDPOINT` pointing to real services. It controls the materializer queue, so stop both separate `jobs` and `runner` services while running that suite, then restart it before `test:checkpoints`. Linux container tests can use `http://collab:8081`, `http://minio:9000` and the private Compose network. Without these prerequisites the integration test explicitly skips; that is not acceptance evidence.
 
 Frozen contracts live in `contracts/`; code boundaries and current limitations live in `docs/`. Do not treat reserved OpenAPI operations as implemented endpoints.
+
+Private execution requires prebuilt digest-pinned Python/JavaScript templates and the explicit `compose.runner.yaml` override. Follow [runner setup and checks](services/runner/README.md). Run selects a manifest entrypoint and bounded stdin, drains pending edit receipts, captures a committed checkpoint, and shows its exact ID with output/exit status. Only owner/editor can run or cancel; current project members can read job/output. Limits: 1 CPU, 128 MiB, 32 PIDs, 5 seconds, 16 KiB stdin, 64 KiB combined output and one active run per user/project. Output floods truncate and terminate. Interrupted attempts fail without automatic re-execution. The separate agent alone controls Docker and has no application credentials. Docker shares kernel risk; this is not a public hostile-code sandbox or production deployment. The base stack and production auth configuration keep execution disabled.
 
 The raw acceptance suite kills real test subprocesses at database/commit/snapshot/renewal barriers. Run the full-stack two-account worker-restart and storage-failure demonstration only against the designated local test Compose stack (it kills its `collab` service and terminates a scoped blocked database connection):
 
@@ -68,4 +71,4 @@ npm.cmd run test:realtime
 npm.cmd run test:recovery # same local stack; automatic reconnect + worker/Redis interruption
 ```
 
-These tests use seeded authenticated sessions rather than live GitHub credentials. The recovery suite routes document WebSockets through Playwright to drop ACKs, duplicate frames and interrupt transport while forwarding accepted traffic to real Go/PostgreSQL. With `CCE_E2E_RESTART=1`, it kills/restarts the local worker and stops/restarts Redis. Run it only against the designated test stack, separately from checkpoint materializer integration tests. Active source is capped independently at 10 MiB; retained update payloads at 1 GiB. Browser state is capped at 2 MiB and outbox at 8 MiB/4096 entries per account/document generation. These quotas do not replace backups or disk monitoring. Runs, search and measured release work remain Phases 07–09.
+These tests use seeded authenticated sessions rather than live GitHub credentials. The recovery suite routes document WebSockets through Playwright to drop ACKs, duplicate frames and interrupt transport while forwarding accepted traffic to real Go/PostgreSQL. With `CCE_E2E_RESTART=1`, it kills/restarts the local worker and stops/restarts Redis. Run it only against the designated test stack, separately from checkpoint materializer integration tests. Active source is capped independently at 10 MiB; retained update payloads at 1 GiB. Browser state is capped at 2 MiB and outbox at 8 MiB/4096 entries per account/document generation. These quotas do not replace backups or disk monitoring. Search and measured release work remain Phases 08–09.
