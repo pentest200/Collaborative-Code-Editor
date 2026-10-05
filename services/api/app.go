@@ -43,6 +43,7 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/invites/{invite_id}", a.revokeInvite)
 	mux.HandleFunc("POST /api/v1/invites/{token}/accept", a.acceptInvite)
 	mux.HandleFunc("GET /api/v1/projects/{project_id}/tree", a.getTree)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/search", a.searchProject)
 	mux.HandleFunc("POST /api/v1/projects/{project_id}/tree", a.createTreeEntry)
 	mux.HandleFunc("PATCH /api/v1/projects/{project_id}/tree/{file_id}", a.updateTreeEntry)
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/tree/{file_id}", a.deleteTreeEntry)

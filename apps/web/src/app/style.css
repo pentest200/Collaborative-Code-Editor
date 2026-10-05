@@ -141,3 +141,14 @@ footer { border-top: 1px solid #2b3544; color: #a9b5c7; margin-top: 3rem; paddin
 .checkpoint-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; background: #080d13; padding: 12px; }
 .checkpoint-panel section a { margin-left: 8px; }
 @media (max-width: 800px) { .checkpoint-panel { position: fixed; top: 58px; bottom: 32px; right: 0; z-index: 15; box-shadow: -4px 0 20px #0008; } }
+.project-search { padding: 12px; border-bottom: 1px solid var(--border, #303744); }
+.project-search h3 { margin: 0 0 8px; font-size: 13px; }
+.project-search p, .project-search small, .project-search [role="status"] { font-size: 12px; color: #b4bdce; }
+.project-search form { display: flex; flex-wrap: wrap; gap: 8px; }
+.project-search label { width: 100%; font-size: 12px; }
+.project-search input { min-width: 0; width: 100%; }
+.project-search ul { padding: 0; list-style: none; }
+.project-search li { padding: 8px 0; border-bottom: 1px solid #303744; }
+.project-search li button { max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+.project-search small { display: block; margin-top: 6px; }
+.project-search pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.5 monospace; color: #dce3f1; }

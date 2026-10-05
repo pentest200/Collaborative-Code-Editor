@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: >-
     Phases 00–06 implement health, identity, projects, memberships, file-tree metadata, durable realtime collaboration, and private immutable checkpoints with owner-only restore.
-    Runs and search remain reserved for later phases. See checkpoints.md for artifact and generation contracts.
+    Runs and versioned search are implemented. See checkpoints.md and search.md for artifact, generation and freshness contracts.
 servers:
   - url: /
     description: Same origin through web reverse proxy
@@ -462,15 +462,27 @@ paths:
       security: [{ sessionCookie: [] }]
       parameters:
         - { $ref: '#/components/parameters/ProjectId' }
-        - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - { name: q, in: query, required: true, description: Case-insensitive literal substring of 1–128 UTF-8 bytes after trimming; no control characters, regex or query syntax., schema: { type: string, minLength: 1, maxLength: 128 } }
       responses:
         '200':
           description: Versioned authorized results; may lag committed edits
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: '#/components/schemas/SearchResult' }
+                type: object
+                additionalProperties: false
+                required: [results, truncated, freshness]
+                properties:
+                  results:
+                    type: array
+                    maxItems: 50
+                    items: { $ref: '#/components/schemas/SearchResult' }
+                  truncated: { type: boolean }
+                  freshness: { type: string }
+        '400': { description: Invalid query or duplicate/unknown query keys }
+        '401': { description: Session required or expired }
+        '404': { description: Project missing or membership removed }
+        '503': { description: Database unavailable or query deadline exceeded }
 components:
   securitySchemes:
     sessionCookie: { type: apiKey, in: cookie, name: cce_session }
@@ -578,13 +590,18 @@ components:
     SearchResult:
       type: object
       additionalProperties: false
-      required: [file_id, document_id, through_sequence, path, snippet]
+      required: [project_id, file_id, document_id, generation, indexed_sequence, current_sequence, stale, filename_match, path, snippet]
       properties:
+        project_id: { type: string, format: uuid }
         file_id: { type: string, format: uuid }
         document_id: { type: string, format: uuid }
-        through_sequence: { $ref: '#/components/schemas/DecimalSequence' }
+        generation: { $ref: '#/components/schemas/DecimalSequence' }
+        indexed_sequence: { type: [string, 'null'], pattern: '^(0|[1-9][0-9]*)$' }
+        current_sequence: { $ref: '#/components/schemas/DecimalSequence' }
+        stale: { type: boolean }
+        filename_match: { type: boolean }
         path: { type: string }
-        snippet: { type: string }
+        snippet: { type: [string, 'null'], maxLength: 240 }
   responses:
     Error:
       description: Typed safe error

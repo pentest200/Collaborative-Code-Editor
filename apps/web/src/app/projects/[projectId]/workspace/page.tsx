@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MonacoPreview from "./monaco-preview";
 import Checkpoints from "./checkpoints";
 import Runs from "./runs";
+import ProjectSearch from "./search";
 import type { ConnectionState } from "@/collaboration/provider";
 import { DraftRecovery } from "@/collaboration/draft-recovery";
 
@@ -44,6 +45,7 @@ export default function WorkspacePage() {
   const [selectedId, setSelectedId] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [action, setAction] = useState<Action>(null);
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
@@ -199,6 +201,8 @@ export default function WorkspacePage() {
     <header className="workspace-topbar"><div className="workspace-title"><Link href="/" aria-label="Back to projects">←</Link><span className="workspace-logo">CCE</span><strong>{project.name}</strong><span className="workspace-state">{activeFile ? connection : "File tree ready"}</span></div><nav aria-label="Project actions"><Link href={`/projects/${projectId}`}>Team</Link>{project.role === "owner" && <Link href={`/projects/${projectId}`}>Share</Link>}<button type="button" onClick={() => setCheckpointsOpen((open) => !open)} aria-expanded={checkpointsOpen}>Checkpoints</button><button type="button" disabled={!canEdit || runBusy || !executionEnabled} title={executionEnabled ? "Run committed source in the restricted private demo" : "Execution is unavailable in this workspace"} onClick={() => setRunsOpen((open) => !open)} aria-expanded={runsOpen}>Run</button></nav></header>
     <div className="workspace-body">
       <aside className="explorer" aria-label="File explorer"><div className="explorer-heading"><h2>Explorer</h2><span>{tree.entries.length} entries</span></div><label className="sr-only" htmlFor="file-search">Find files</label><input id="file-search" type="search" placeholder="Find files" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <button type="button" onClick={() => setSearchOpen(open => !open)} aria-expanded={searchOpen}>Search project</button>
+        {searchOpen && <ProjectSearch base={base} treeVersion={tree.tree_version} onOpen={id => { const entry = tree.entries.find(item => item.id === id); if (entry) openEntry(entry); }} />}
         {session && <DraftRecovery userID={session.user.id} projectID={projectId} />}
         {canEdit && <div className="explorer-actions"><button type="button" onClick={() => beginAction("file")}>New file</button><button type="button" onClick={() => beginAction("folder")}>New folder</button></div>}
         {canEdit && selected && <div className="explorer-actions"><button type="button" onClick={() => beginAction("rename")}>Rename</button><button type="button" onClick={() => beginAction("move")}>Move</button><button type="button" onClick={deleteSelected}>Delete</button></div>}

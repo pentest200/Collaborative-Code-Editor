@@ -95,6 +95,12 @@ func (a *App) documentSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	release := reserveSocket(session.UserID)
+	if release == nil {
+		writeError(w, 429, "LIMIT_EXCEEDED", "Too many active workspace connections")
+		return
+	}
+	defer release()
 	assertion, err := a.socketAssertion(session, d, documentID)
 	if err != nil {
 		writeError(w, 500, "STORAGE_UNAVAILABLE", "Cannot open document")

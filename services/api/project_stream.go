@@ -54,6 +54,12 @@ func (a *App) projectSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	release := reserveSocket(session.UserID)
+	if release == nil {
+		writeError(w, 429, "LIMIT_EXCEEDED", "Too many active workspace connections")
+		return
+	}
+	defer release()
 	conn, err := browserUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return

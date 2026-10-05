@@ -45,6 +45,7 @@ Room queue is FIFO, one active fenced owner per document. Candidate Yjs updates 
 | Candidate validation | 2 seconds wall time and 64 MiB worker heap budget; fail closed |
 | Connected tabs / inactive models | 1 active document/tab, 4 inactive models/tab |
 | Read revalidation | Every 2 seconds plus durable revocation event |
+| Public WebSocket admission | Phase 08: 1,024 total / 16 per authenticated actor per Go process, shared by document/control sockets and pending worker handshakes; HTTP 429 LIMIT_EXCEEDED before upgrade |
 
 Limits are design ceilings and have not been load validated. Parser work is additionally bounded by exact envelope lengths before Yjs decode.
 

@@ -419,11 +419,15 @@ func addCheckpointLifecycle(ctx context.Context, tx pgx.Tx, project, id, topic s
 }
 
 func (a *App) internalCheckpoint(ctx context.Context, path string, input, output any) error {
+	return a.internalJSON(ctx, "/internal/checkpoints/"+path, input, output)
+}
+
+func (a *App) internalJSON(ctx context.Context, path string, input, output any) error {
 	encoded, err := json.Marshal(input)
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequestWithContext(ctx, "POST", a.cfg.CollabOrigin+"/internal/checkpoints/"+path, bytes.NewReader(encoded))
+	request, err := http.NewRequestWithContext(ctx, "POST", a.cfg.CollabOrigin+path, bytes.NewReader(encoded))
 	if err != nil {
 		return err
 	}

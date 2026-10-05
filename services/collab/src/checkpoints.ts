@@ -30,8 +30,15 @@ export function checkpointHandler(url: string, token: string) {
         response.end(JSON.stringify({ encoded_state: Buffer.from(value.state).toString("base64"), state_vector: Buffer.from(value.vector).toString("base64") }));
         return;
       }
-      if (!uuid.test(body.project_id) || !uuid.test(body.checkpoint_id) || !uuid.test(body.file_id)) throw new Error("FRAME_INVALID");
-      const input = (await pool.query(`SELECT f.document_id,f.through_sequence::text,f.snapshot_sequence::text,f.snapshot_checksum,
+      const search = request.url === "/internal/search/materialize";
+      if (!uuid.test(body.project_id) || !uuid.test(body.file_id)) throw new Error("FRAME_INVALID");
+      if (search && (!uuid.test(body.document_id) || !uuid.test(body.snapshot_id) || typeof body.through_sequence !== "string" || !/^(0|[1-9][0-9]{0,18})$/.test(body.through_sequence) || BigInt(body.through_sequence) > 9223372036854775807n)) throw new Error("FRAME_INVALID");
+      if (!search && !uuid.test(body.checkpoint_id)) throw new Error("FRAME_INVALID");
+      const input = search ? (await pool.query(`SELECT d.id AS document_id,$4::bigint::text AS through_sequence,s.through_sequence::text AS snapshot_sequence,s.checksum AS snapshot_checksum,
+        s.encoded_state,s.state_vector,s.checksum,s.through_sequence::text AS actual_snapshot_sequence
+        FROM documents d JOIN files f ON f.id=d.file_id JOIN document_snapshots s ON s.document_id=d.id AND s.id=$5
+        WHERE f.project_id=$1 AND f.id=$2 AND d.id=$3 AND d.last_committed_sequence>=$4`,
+        [body.project_id,body.file_id,body.document_id,body.through_sequence,body.snapshot_id])).rows[0] : (await pool.query(`SELECT f.document_id,f.through_sequence::text,f.snapshot_sequence::text,f.snapshot_checksum,
         s.encoded_state,s.state_vector,s.checksum,s.through_sequence::text AS actual_snapshot_sequence FROM checkpoint_files f JOIN checkpoints c ON c.id=f.checkpoint_id
         JOIN document_snapshots s ON s.id=f.snapshot_id AND s.document_id=f.document_id
         WHERE c.project_id=$1 AND c.id=$2 AND f.file_id=$3`, [body.project_id, body.checkpoint_id, body.file_id])).rows[0];

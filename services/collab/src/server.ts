@@ -10,7 +10,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("invali
 
 const checkpoints = checkpointHandler(process.env.DATABASE_URL ?? "", process.env.COLLAB_INTERNAL_TOKEN ?? (process.env.NODE_ENV === "production" ? "" : "cce_dev_internal_only"));
 const server = createServer((request, response) => {
-  if (request.url === "/internal/checkpoints/materialize" || request.url === "/internal/checkpoints/prepare") {
+  if (request.url === "/internal/checkpoints/materialize" || request.url === "/internal/checkpoints/prepare" || request.url === "/internal/search/materialize") {
     void checkpoints(request, response);
     return;
   }

@@ -44,6 +44,7 @@ func main() {
 		}
 		app.client.Timeout = 40 * time.Second
 		go app.runExecutionJobs(workerCtx)
+		go app.runSearchJobs(workerCtx)
 		app.runCheckpointJobs(workerCtx)
 		return
 	}

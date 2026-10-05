@@ -1,6 +1,6 @@
 # Collaborative Code Editor
 
-Phase 07 adds restricted private-demo Python/JavaScript runs from verified immutable checkpoints, bounded Output/stdin, timeout and cancellation. The browser waits for durable edit receipts before capturing input. Collaboration, retained drafts and generation-safe checkpoint restore remain available. [The specification](PROJECT_SPEC.md) defines the intended release; [implementation status](docs/implementation-status.md) records actual verification and remaining gaps. Execution is opt-in on a designated local Docker environment; base Compose leaves Run unavailable.
+Phase 08 adds project-scoped filename/content search from versioned committed Yjs projections and strengthens session/invite expiry checks across lock waits. Collaboration, retained drafts, generation-safe checkpoint restore and restricted private-demo Python/JavaScript runs remain available. [The specification](PROJECT_SPEC.md) defines the intended release; [implementation status](docs/implementation-status.md) records actual verification and remaining gaps. Execution is opt-in on a designated local Docker environment; base Compose leaves Run unavailable.
 
 ## Development
 
@@ -17,6 +17,7 @@ npm run test:workspace # after build; uses installed Microsoft Edge by default
 npm run test:realtime # after Compose is running, with TEST_DATABASE_URL set
 npm run test:recovery # real browser draft/reconnect/undo/privacy acceptance
 npm run test:checkpoints # real PostgreSQL/MinIO capture, preview, restore and offline generation recovery
+npm run test:search # real two-account versioned search and lifecycle visibility
 cd services/api && go test ./... && go vet ./...
 docker compose -f infra/compose/compose.yaml config
 docker compose -f infra/compose/compose.yaml up --build
@@ -24,17 +25,20 @@ docker compose -f infra/compose/compose.yaml up --build
 
 Open `http://localhost:3000` to sign in, create projects, organize files/folders, edit with teammates, invite members, and manage roles. Synced means committed-state exchange; Saving includes local retention and pending server receipts; Saved requires all matching receipts. Offline edits can continue after the document has initialized. Offline — draft retained appears after the browser transaction finishes. Reconnect refreshes authorization and replays original identities. Recovery after worker death waits for its 15-second lease and retry backoff. Ctrl/Cmd+Z undoes local edits while preserving remote edits; undo history resets on file switch/reload.
 
-Download visible draft exports current text even after a storage failure. Recover drafts exports account/project-scoped generations, including deleted/replaced files. Old-generation or access-denied outboxes stop replay. IndexedDB retention does not cover edits before the transaction completes, browser data eviction, device loss or cleared site data. Storage failure stops typing and exposes export. Explicit logout removes this account's cached drafts and shuts down other tabs; see [provider/privacy contract](contracts/provider.md). Execution and content search remain unfinished.
+Download visible draft exports current text even after a storage failure. Recover drafts exports account/project-scoped generations, including deleted/replaced files. Old-generation or access-denied outboxes stop replay. IndexedDB retention does not cover edits before the transaction completes, browser data eviction, device loss or cleared site data. Storage failure stops typing and exposes export. Explicit logout removes this account's cached drafts and shuts down other tabs; see [provider/privacy contract](contracts/provider.md).
+
+Use Search project for literal, case-insensitive filename/content matching. Results show the indexed sequence and whether it lags the committed file. Content indexing is eventual; Refresh results checks for newer projections. Opening a match opens its current file. Deleted/replaced generations are filtered even while indexing lags, and current membership is checked on every query. Queries are limited to 128 UTF-8 bytes and the first 50 matches. See [search contract](contracts/search.md) and [Phase 08 review](docs/phase08-review.md).
 
 Use Checkpoints in the workspace to capture committed server state; local unreceipted drafts are excluded. Owners/editors can capture and retry failed materializations; current members can preview/download ready checkpoints. Owner restore verifies all artifacts and prepares fresh Yjs documents, then atomically captures the latest previous committed state and replaces the tree/generations. Previous-state preview waits for its independent materializer to succeed. Connected clients rebind; old queued/offline updates remain separate downloadable drafts and never merge into restored text. See [checkpoint contract](contracts/checkpoints.md).
 
-File creation needs the private collaboration process for empty Yjs state initialization. `GET /api/v1/healthz` and the private `/internal/healthz` report process liveness. `docker compose -f infra/compose/compose.yaml down` preserves the database and artifact volumes. Fresh volumes apply all canonical migrations automatically; existing volumes require missing migrations in order. An existing Phase 03 volume needs 0004, 0005, 0006, 0007 and the local worker login; a Phase 05 volume needs 0006/0007, and a Phase 06 volume needs only 0007:
+File creation needs the private collaboration process for empty Yjs state initialization. `GET /api/v1/healthz` and the private `/internal/healthz` report process liveness. `docker compose -f infra/compose/compose.yaml down` preserves the database and artifact volumes. Fresh volumes apply all canonical migrations automatically; existing volumes require missing migrations in order. A Phase 07 volume needs 0008; earlier volumes first apply their missing migrations through 0007 and the local worker login:
 
 ```sh
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0004_document_durability.sql
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0005_awareness_identity.sql
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0006_checkpoints.sql
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0007_runs.sql
+docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /canonical-migrations/0008_search.sql
 docker compose -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -v ON_ERROR_STOP=1 -f /local-collab-login.sql
 ```
 
@@ -71,4 +75,4 @@ npm.cmd run test:realtime
 npm.cmd run test:recovery # same local stack; automatic reconnect + worker/Redis interruption
 ```
 
-These tests use seeded authenticated sessions rather than live GitHub credentials. The recovery suite routes document WebSockets through Playwright to drop ACKs, duplicate frames and interrupt transport while forwarding accepted traffic to real Go/PostgreSQL. With `CCE_E2E_RESTART=1`, it kills/restarts the local worker and stops/restarts Redis. Run it only against the designated test stack, separately from checkpoint materializer integration tests. Active source is capped independently at 10 MiB; retained update payloads at 1 GiB. Browser state is capped at 2 MiB and outbox at 8 MiB/4096 entries per account/document generation. These quotas do not replace backups or disk monitoring. Search and measured release work remain Phases 08–09.
+These tests use seeded authenticated sessions rather than live GitHub credentials. The recovery suite routes document WebSockets through Playwright to drop ACKs, duplicate frames and interrupt transport while forwarding accepted traffic to real Go/PostgreSQL. With `CCE_E2E_RESTART=1`, it kills/restarts the local worker and stops/restarts Redis. Run it only against the designated test stack, separately from checkpoint materializer integration tests. Active source is capped independently at 10 MiB; retained update payloads at 1 GiB. Browser state is capped at 2 MiB and outbox at 8 MiB/4096 entries per account/document generation. These quotas do not replace backups or disk monitoring. Measured release work remains Phase 09; versioned search is implemented in Phase 08.

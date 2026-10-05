@@ -165,7 +165,7 @@ func (a *App) getProject(w http.ResponseWriter, r *http.Request) {
 
 func lockActiveSession(ctx context.Context, tx pgx.Tx, sessionID string) error {
 	var id string
-	err := tx.QueryRow(ctx, `SELECT id::text FROM sessions WHERE id=$1 AND revoked_at IS NULL AND expires_at>now() FOR SHARE`, sessionID).Scan(&id)
+	err := tx.QueryRow(ctx, `SELECT id::text FROM sessions WHERE id=$1 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`, sessionID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errSessionEnded
 	}
@@ -533,7 +533,7 @@ func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	var inviteID, role string
 	err = tx.QueryRow(r.Context(), `SELECT id::text,role FROM project_invites
-		WHERE project_id=$1 AND token_hash=$2 AND expires_at>now() AND used_count<max_uses FOR UPDATE`, projectID, digest(token)).Scan(&inviteID, &role)
+		WHERE project_id=$1 AND token_hash=$2 AND expires_at>clock_timestamp() AND used_count<max_uses FOR UPDATE`, projectID, digest(token)).Scan(&inviteID, &role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, 409, "INVITE_UNAVAILABLE", "Invitation expired or exhausted")
 		return

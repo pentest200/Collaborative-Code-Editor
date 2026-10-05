@@ -1,4 +1,4 @@
-# Checkpoint and run-state worker
+# Checkpoint, search and run-state worker
 
 The `jobs` Compose service runs the Go API codebase with `JOBS_ONLY=true`.
 It exposes no HTTP server and receives only the private PostgreSQL, TS authority
@@ -19,3 +19,12 @@ then restart them before browser/real execution checks.
 The local bucket is private by default, with no anonymous policy or browser
 credentials. Production provisioning must supply private S3 bucket credentials
 and TLS storage endpoints; local root credentials are development fixtures.
+
+Phase 08 also consumes the coalesced durable search_tasks queue. Committed-head
+and generation triggers advance a revision transactionally; the single search
+loop reconstructs captured Yjs cuts through the private TS authority. A 45-second
+claim and 35-second task deadline bound takeover; failed cuts retain their revision
+and retry after five seconds. Publication checks current generation/live claim and
+never replaces a newer projection. Search availability/freshness is independent
+of checkpoint uploads and execution. See contracts/search.md for query semantics,
+queue bounds and version fields.
