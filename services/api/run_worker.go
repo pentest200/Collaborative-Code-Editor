@@ -166,6 +166,10 @@ func (a *App) claimRun(w http.ResponseWriter, r *http.Request) {
 		treeDBError(w, err)
 		return
 	}
+	var admittedSeconds float64
+	if a.db.QueryRow(r.Context(), `SELECT extract(epoch FROM clock_timestamp()-created_at)::double precision FROM run_jobs WHERE id=$1`, job.ID).Scan(&admittedSeconds) == nil {
+		operationSeconds.WithLabelValues("run.admission", "ok").Observe(admittedSeconds)
+	}
 	writeJSON(w, 200, job)
 }
 

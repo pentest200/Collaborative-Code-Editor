@@ -1,3 +1,4 @@
+import { sample } from "./measurements";
 import * as Y from "yjs";
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate, removeAwarenessStates } from "y-protocols/awareness";
 import { decodeEnvelope, encodeEnvelope, FrameType } from "@cce/protocol";
@@ -55,6 +56,8 @@ export class DocumentProvider {
   private deadline?: ReturnType<typeof setTimeout>;
   private receiptDeadline?: ReturnType<typeof setTimeout>;
   private sent = new Set<string>();
+ private sentAt = new Map<string, number>();
+ private connectAt = 0;
   private queue = Promise.resolve();
   private channel = draftChannel();
   private state: ConnectionState = "Connecting";
@@ -118,7 +121,8 @@ export class DocumentProvider {
         const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(update)));
         if (this.discarded) return;
         const item = { instance: this.instance, message: crypto.randomUUID(), hash, update };
-        const row = await this.store.retain(update, item); this.pending = row.pending;
+        const retainAt = performance.now();
+        const row = await this.store.retain(update, item); sample("local_retention_ms",performance.now()-retainAt); this.pending = row.pending;
         this.notifyDraft(); this.pump();
       } finally { this.localWork--; this.localBytes -= update.length; this.publish(); }
     });
@@ -137,7 +141,7 @@ export class DocumentProvider {
   }
   private async connect() {
     if (this.closed || this.transportPaused || this.terminal || this.storageFailure || this.socket || this.connecting) return;
-    this.connecting = true;
+    this.connecting = true; this.connectAt = performance.now();
     try {
       const signal = AbortSignal.timeout(5000);
       const session = await fetch("/api/v1/session", { cache: "no-store", signal });
@@ -195,6 +199,7 @@ export class DocumentProvider {
           this.pending = (await this.store.retain(delta, { instance: this.instance, message: crypto.randomUUID(), hash, update: delta })).pending;
         }
       }
+      sample("connect_sync_ms", performance.now()-this.connectAt);
       this.synced = true; this.attempt = 0; clearTimeout(this.deadline); this.publish(); this.pump(); this.sendAwareness();
     }
     if (type === FrameType.UPDATE_COMMITTED) {
@@ -207,6 +212,7 @@ export class DocumentProvider {
       if (item) Y.applyUpdate(this.committed, item.update, remoteOrigin);
       const row = await this.store.acknowledge(instance, message, body.subarray(40,72)); this.pending = row.pending;
       if (item) this.receivedReceipt = true;
+      const sentAt = this.sentAt.get(instance + message); if (sentAt !== undefined) sample("durable_ack_ms",performance.now()-sentAt); this.sentAt.delete(instance+message);
       this.sent.delete(instance + message); clearTimeout(this.receiptDeadline);
       this.channel.postMessage({ key: draftKey(this.scope) }); this.publish(); this.pump();
     }
@@ -249,7 +255,7 @@ export class DocumentProvider {
       if (this.closed || this.terminal || !this.synced || this.socket?.readyState !== WebSocket.OPEN) return;
       const item = this.pending[0]; if (!item) return;
       const body = new Uint8Array(64 + item.update.length); body.set(uuidBytes(item.instance)); body.set(uuidBytes(item.message),16); body.set(item.hash,32); body.set(item.update,64);
-      this.sent.add(item.instance + item.message); this.send(FrameType.DURABLE_UPDATE, body);
+      this.sentAt.set(item.instance + item.message,performance.now()); this.sent.add(item.instance + item.message); this.send(FrameType.DURABLE_UPDATE, body);
       this.receiptDeadline = setTimeout(() => { this.disconnect(); this.publish(); this.schedule(); }, 10000);
     }, 40);
   }
@@ -262,7 +268,7 @@ export class DocumentProvider {
   }
   private clearPeers() { removeAwarenessStates(this.awareness, [...this.awareness.getStates().keys()].filter((id) => id !== this.doc.clientID), remoteOrigin); }
   private disconnect() {
-    const socket = this.socket; this.socket = null; this.synced = false; this.sent.clear();
+    const socket = this.socket; this.socket = null; this.synced = false; this.sent.clear(); this.sentAt.clear();
     clearTimeout(this.deadline); clearTimeout(this.receiptDeadline); socket?.close(); this.clearPeers();
   }
   get canType() { return this.storageReady && this.initialized && this.writable && !this.transportPaused && !this.storageFailure && !this.terminal && !this.closed; }

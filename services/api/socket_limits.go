@@ -17,11 +17,13 @@ func reserveSocket(actor string) func() {
 		return nil
 	}
 	socketAdmission.total++
+	connections.Inc()
 	socketAdmission.actors[actor]++
 	return func() {
 		socketAdmission.Lock()
 		defer socketAdmission.Unlock()
 		socketAdmission.total--
+		connections.Dec()
 		socketAdmission.actors[actor]--
 		if socketAdmission.actors[actor] == 0 {
 			delete(socketAdmission.actors, actor)

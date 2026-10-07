@@ -1,0 +1,10 @@
+# Use together with compose.runner.yaml and compose.observability.yaml.
+services:
+  runner:
+    environment:
+      METRICS_LISTEN_ADDR: 0.0.0.0:9091
+    expose: ["9091"]
+  prometheus:
+    networks: [private, public, execution-control]
+    volumes:
+      - ../observability/prometheus-runner.yaml:/etc/prometheus/prometheus.yaml:ro

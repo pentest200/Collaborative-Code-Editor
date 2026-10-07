@@ -227,7 +227,9 @@ func (a *App) indexNext(ctx context.Context) (bool, error) {
 	return true, a.indexSearchCut(ctx, cut)
 }
 
-func (a *App) indexSearchCut(ctx context.Context, cut searchCut) error {
+func (a *App) indexSearchCut(ctx context.Context, cut searchCut) (resultErr error) {
+	ctx, finish := operation(ctx, "search.materialize")
+	defer func() { finish(resultErr) }()
 	task, cancel := context.WithTimeout(ctx, 35*time.Second)
 	defer cancel()
 	var err error

@@ -46,6 +46,10 @@ export default function MonacoPreview({ userId, projectId, file, canEdit, onCurs
     if (!item?.document_id) return;
     const uri = library.Uri.parse(`cce://project/${projectId}/${item.id}/${item.document_id}`);
     const nextModel = library.editor.createModel("", item.language ?? "plaintext", uri);
+    // y-monaco maps Y.Text offsets through Monaco's model offsets. A Windows
+    // CRLF default adds one model character per shared LF newline and shifts
+    // remote edits. Set the editing model's EOL before binding/initial sync.
+    nextModel.setEOL(library.editor.EndOfLineSequence.LF);
     model.current = nextModel;
     const nextProvider = new DocumentProvider({ userID: userId, projectID: projectId, fileID: item.id, documentID: item.document_id, generation: item.generation }, writable.current, (state) => {
       if (provider.current !== nextProvider) return;

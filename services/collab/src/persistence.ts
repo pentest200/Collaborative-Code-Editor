@@ -1,3 +1,4 @@
+import { measured, ownership } from "./observability.js";
 import { createHash } from "node:crypto";
 import { Pool } from "pg";
 import { encodeCandidate, type EncodedDocument } from "./candidate.js";
@@ -16,25 +17,38 @@ export class DocumentStore {
     return [scope.project_id, scope.file_id, scope.document_id, scope.generation, scope.sub, scope.sid, this.worker, fence.toString()];
   }
   async acquire(document: string): Promise<bigint> {
-    return BigInt((await this.pool.query("SELECT cce_acquire_document($1,$2)::text AS fence", [document, this.worker])).rows[0].fence);
+    return measured("document.acquire", async () => {
+    const acquired = BigInt((await this.pool.query("SELECT cce_acquire_document($1,$2)::text AS fence", [document, this.worker])).rows[0].fence);
+    ownership.inc(); return acquired;
+
+    });
   }
   async renew(document: string, fence: bigint): Promise<boolean> {
+    return measured("document.renew", async () => {
     return (await this.pool.query("SELECT cce_renew_document($1,$2,$3) AS ok", [document, this.worker, fence.toString()])).rows[0].ok as boolean;
+    });
   }
   async release(document: string, fence: bigint) {
+    return measured("document.release", async () => {
     await this.pool.query("SELECT cce_release_document($1,$2,$3)", [document, this.worker, fence.toString()]);
+    });
   }
   async receipt(scope: DocumentScope, fence: bigint, instance: string, message: string, hash: Uint8Array): Promise<bigint | null> {
+    return measured("document.receipt", async () => {
     const result = await this.pool.query("SELECT cce_document_receipt($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)::text AS sequence", [...this.args(scope, fence), instance, message, Buffer.from(hash)]);
     return result.rows[0].sequence === null ? null : BigInt(result.rows[0].sequence);
+    });
   }
   async append(scope: DocumentScope, fence: bigint, head: bigint, instance: string, message: string, hash: Uint8Array, update: Uint8Array, textBytes: number): Promise<bigint> {
+    return measured("document.append", async () => {
     // A single function call in autocommit: its result is exposed only after
     // ReadyForQuery confirms transaction completion. Network errors are ambiguous.
     const result = await this.pool.query("SELECT cce_append_document($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)::text AS sequence", [...this.args(scope, fence), head.toString(), instance, message, Buffer.from(hash), Buffer.from(update), textBytes]);
     return BigInt(result.rows[0].sequence);
+    });
   }
   async hydrate(document: string): Promise<OwnedState & { snapshotSequence: bigint }> {
+    return measured("document.hydrate", async () => {
     const deadline = performance.now() + 30000;
     const client = await this.pool.connect();
     try {
@@ -61,8 +75,11 @@ export class DocumentStore {
       return { ...value, sequence, snapshotSequence: BigInt(snapshot.sequence) };
     } catch (error) { await client.query("ROLLBACK").catch(() => {}); throw error; }
     finally { client.release(); }
+    });
   }
   async snapshot(document: string, fence: bigint, state: OwnedState) {
+    return measured("document.snapshot", async () => {
     await this.pool.query("SELECT cce_publish_snapshot($1,$2,$3,$4,$5,$6,$7)", [document, this.worker, fence.toString(), state.sequence.toString(), Buffer.from(state.state), Buffer.from(state.vector), digest(state.state)]);
+    });
   }
 }

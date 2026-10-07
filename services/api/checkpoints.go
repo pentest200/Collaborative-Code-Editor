@@ -431,6 +431,7 @@ func (a *App) internalJSON(ctx context.Context, path string, input, output any) 
 	if err != nil {
 		return err
 	}
+	injectTrace(ctx, request.Header)
 	request.Header.Set("X-Internal-Token", a.cfg.CollabToken)
 	request.Header.Set("Content-Type", "application/json")
 	response, err := a.client.Do(request)

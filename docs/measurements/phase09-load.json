@@ -1,0 +1,808 @@
+{
+  "date": "2026-10-05T21:28:02.439Z",
+  "toolchains": {
+    "node": "v22.15.0",
+    "npm": "10.9.2",
+    "yjs": "13.6.27"
+  },
+  "host": {
+    "os": "win32",
+    "release": "10.0.26300",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "logicalCPUs": 16,
+    "ramBytes": 16944848896
+  },
+  "topology": "Windows raw clients -> localhost Caddy -> Go -> one TS worker -> PostgreSQL in Docker Desktop; loopback, not WAN",
+  "scenarios": [
+    {
+      "clientRssBytes": {
+        "samples": 155,
+        "p50": 53587968,
+        "p95": 58130432,
+        "max": 58216448
+      },
+      "serviceMemory": {
+        "collabRss": [
+          {
+            "labels": {
+              "__name__": "cce_process_resident_memory_bytes",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 121667584,
+              "p95": 123256832,
+              "max": 123256832
+            }
+          }
+        ],
+        "apiRss": [
+          {
+            "labels": {
+              "__name__": "process_resident_memory_bytes",
+              "instance": "api:9091",
+              "job": "cce",
+              "service": "api"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 36458496,
+              "p95": 38293504,
+              "max": 38293504
+            }
+          }
+        ],
+        "rooms": [
+          {
+            "labels": {
+              "__name__": "cce_rooms",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 1,
+              "p95": 1,
+              "max": 1
+            }
+          }
+        ],
+        "connections": [
+          {
+            "labels": {
+              "__name__": "cce_connections",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 5,
+              "p95": 5,
+              "max": 5
+            }
+          }
+        ],
+        "ownershipCumulative": [
+          {
+            "labels": {
+              "__name__": "cce_ownership_total",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 7,
+              "p95": 7,
+              "max": 7
+            }
+          }
+        ],
+        "roomQueueItems": [
+          {
+            "labels": {
+              "__name__": "cce_room_queue_items",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 0,
+              "p95": 15,
+              "max": 15
+            }
+          }
+        ],
+        "roomQueueBytes": [
+          {
+            "labels": {
+              "__name__": "cce_room_queue_bytes",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 0,
+              "p95": 1230,
+              "max": 1230
+            }
+          }
+        ],
+        "roomStateBytes": [
+          {
+            "labels": {
+              "__name__": "cce_room_state_bytes",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 2346,
+              "p95": 2973,
+              "max": 2983
+            }
+          }
+        ],
+        "storageBytes": [
+          {
+            "labels": {
+              "__name__": "cce_storage_bytes",
+              "instance": "api:9091",
+              "job": "cce",
+              "kind": "database_physical",
+              "service": "api"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 18208447,
+              "p95": 18257599,
+              "max": 18257599
+            }
+          },
+          {
+            "labels": {
+              "__name__": "cce_storage_bytes",
+              "instance": "api:9091",
+              "job": "cce",
+              "kind": "update_payload",
+              "service": "api"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 109269,
+              "p95": 110925,
+              "max": 110925
+            }
+          }
+        ],
+        "jobsBacklog": [
+          {
+            "labels": {
+              "__name__": "cce_job_queue_items",
+              "instance": "jobs:9091",
+              "job": "cce",
+              "kind": "checkpoint",
+              "service": "jobs"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 0,
+              "p95": 0,
+              "max": 0
+            }
+          },
+          {
+            "labels": {
+              "__name__": "cce_job_queue_items",
+              "instance": "jobs:9091",
+              "job": "cce",
+              "kind": "run",
+              "service": "jobs"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 0,
+              "p95": 0,
+              "max": 0
+            }
+          },
+          {
+            "labels": {
+              "__name__": "cce_job_queue_items",
+              "instance": "jobs:9091",
+              "job": "cce",
+              "kind": "search",
+              "service": "jobs"
+            },
+            "values": {
+              "samples": 40,
+              "p50": 16,
+              "p95": 16,
+              "max": 16
+            }
+          }
+        ]
+      },
+      "operationHistogramDeltas": [
+        {
+          "name": "cce_candidate_heap_bytes",
+          "operation": "candidate.heap",
+          "outcome": "ok",
+          "count": 191,
+          "mean": 10914036.188481675,
+          "p50BucketUpper": 16000000,
+          "p95BucketUpper": 16000000,
+          "unit": "bytes"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "candidate.compute",
+          "outcome": "ok",
+          "count": 191,
+          "mean": 0.0077036048481682745,
+          "p50BucketUpper": 0.01,
+          "p95BucketUpper": 0.025,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "candidate.total",
+          "outcome": "ok",
+          "count": 191,
+          "mean": 0.07476169715183326,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "internal.materialize",
+          "outcome": "ok",
+          "count": 14,
+          "mean": 0.08054754921428474,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.25,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.acquire",
+          "outcome": "ok",
+          "count": 1,
+          "mean": 0.0028323670000245348,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.005,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.hydrate",
+          "outcome": "ok",
+          "count": 1,
+          "mean": 0.0692192909999867,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.open",
+          "outcome": "ok",
+          "count": 11,
+          "mean": 0.006573966454545191,
+          "p50BucketUpper": 0.001,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.sync",
+          "outcome": "ok",
+          "count": 11,
+          "mean": 0.07413395327272486,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.receipt",
+          "outcome": "ok",
+          "count": 217,
+          "mean": 0.0021918120092162667,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.005,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.append",
+          "outcome": "ok",
+          "count": 165,
+          "mean": 0.0034700492909081155,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.005,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.update",
+          "outcome": "ok",
+          "count": 217,
+          "mean": 0.0681775180737329,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.renew",
+          "outcome": "ok",
+          "count": 7,
+          "mean": 0.003749761714275724,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.025,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.snapshot",
+          "outcome": "ok",
+          "count": 1,
+          "mean": 0.003887554000015371,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.005,
+          "unit": "seconds"
+        }
+      ],
+      "histogramDefinition": "Differences of scraped cumulative histograms; p50/p95 are bucket upper bounds, null means +Inf. Shared service activity can contribute; not exact per-operation samples.",
+      "seed": 90901,
+      "editors": 5,
+      "documents": 1,
+      "initialFileBytes": 1024,
+      "typingMessagesPerSecondPerEditor": 1,
+      "durationSeconds": 39.8029228,
+      "steadyTypingDurationSeconds": 8,
+      "generated": 165,
+      "acknowledged": 165,
+      "rejected": {
+        "RATE_LIMITED": 1
+      },
+      "unresolved": 0,
+      "syncMs": {
+        "samples": 11,
+        "p50": 90.26990000000023,
+        "p95": 192.11170000000038,
+        "max": 192.11170000000038
+      },
+      "durableAckMs": {
+        "samples": 165,
+        "p50": 13871.288500000002,
+        "p95": 22073.0075,
+        "max": 23179.297
+      },
+      "peerPropagationMs": {
+        "samples": 659,
+        "p50": 110.25160000000324,
+        "p95": 3713.132700000002,
+        "max": 4418.597299999998
+      },
+      "payloadGrowthBytes": 3198,
+      "correctness": {
+        "durableRows": 165,
+        "contiguous": true,
+        "replicasEqualDatabase": true,
+        "contentHashes": [
+          "053dc9be83b4c1ffa7098fc7684766cc111cc7c309dab957eb4a73fdddaa504b"
+        ]
+      },
+      "faultEvidence": [
+        "offline local edit with peer edit, original identified replay and convergence",
+        "1.25s paused TCP reader catches up; send ceiling saturation not established",
+        "120-frame burst counts rejection/backpressure and retries retained identities",
+        "duplicate returns original sequence with no extra row"
+      ]
+    },
+    {
+      "clientRssBytes": {
+        "samples": 59,
+        "p50": 57065472,
+        "p95": 57131008,
+        "max": 57131008
+      },
+      "serviceMemory": {
+        "collabRss": [
+          {
+            "labels": {
+              "__name__": "cce_process_resident_memory_bytes",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 157704192,
+              "p95": 162729984,
+              "max": 162729984
+            }
+          }
+        ],
+        "apiRss": [
+          {
+            "labels": {
+              "__name__": "process_resident_memory_bytes",
+              "instance": "api:9091",
+              "job": "cce",
+              "service": "api"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 38686720,
+              "p95": 39079936,
+              "max": 39079936
+            }
+          }
+        ],
+        "rooms": [
+          {
+            "labels": {
+              "__name__": "cce_rooms",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 5,
+              "p95": 5,
+              "max": 5
+            }
+          }
+        ],
+        "connections": [
+          {
+            "labels": {
+              "__name__": "cce_connections",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 12,
+              "p95": 12,
+              "max": 12
+            }
+          }
+        ],
+        "ownershipCumulative": [
+          {
+            "labels": {
+              "__name__": "cce_ownership_total",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 11,
+              "p95": 11,
+              "max": 11
+            }
+          }
+        ],
+        "roomQueueItems": [
+          {
+            "labels": {
+              "__name__": "cce_room_queue_items",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 0,
+              "p95": 0,
+              "max": 0
+            }
+          }
+        ],
+        "roomQueueBytes": [
+          {
+            "labels": {
+              "__name__": "cce_room_queue_bytes",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 0,
+              "p95": 0,
+              "max": 0
+            }
+          }
+        ],
+        "roomStateBytes": [
+          {
+            "labels": {
+              "__name__": "cce_room_state_bytes",
+              "instance": "collab:9091",
+              "job": "cce",
+              "service": "collab"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 36421,
+              "p95": 38195,
+              "max": 38195
+            }
+          }
+        ],
+        "storageBytes": [
+          {
+            "labels": {
+              "__name__": "cce_storage_bytes",
+              "instance": "api:9091",
+              "job": "cce",
+              "kind": "database_physical",
+              "service": "api"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 18257599,
+              "p95": 18290367,
+              "max": 18290367
+            }
+          },
+          {
+            "labels": {
+              "__name__": "cce_storage_bytes",
+              "instance": "api:9091",
+              "job": "cce",
+              "kind": "update_payload",
+              "service": "api"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 111172,
+              "p95": 112703,
+              "max": 112703
+            }
+          }
+        ],
+        "jobsBacklog": [
+          {
+            "labels": {
+              "__name__": "cce_job_queue_items",
+              "instance": "jobs:9091",
+              "job": "cce",
+              "kind": "checkpoint",
+              "service": "jobs"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 0,
+              "p95": 0,
+              "max": 0
+            }
+          },
+          {
+            "labels": {
+              "__name__": "cce_job_queue_items",
+              "instance": "jobs:9091",
+              "job": "cce",
+              "kind": "run",
+              "service": "jobs"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 0,
+              "p95": 0,
+              "max": 0
+            }
+          },
+          {
+            "labels": {
+              "__name__": "cce_job_queue_items",
+              "instance": "jobs:9091",
+              "job": "cce",
+              "kind": "search",
+              "service": "jobs"
+            },
+            "values": {
+              "samples": 16,
+              "p50": 19,
+              "p95": 20,
+              "max": 20
+            }
+          }
+        ]
+      },
+      "operationHistogramDeltas": [
+        {
+          "name": "cce_candidate_heap_bytes",
+          "operation": "candidate.heap",
+          "outcome": "ok",
+          "count": 124,
+          "mean": 10808400.129032258,
+          "p50BucketUpper": 16000000,
+          "p95BucketUpper": 16000000,
+          "unit": "bytes"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "candidate.compute",
+          "outcome": "ok",
+          "count": 124,
+          "mean": 0.007327176709678354,
+          "p50BucketUpper": 0.01,
+          "p95BucketUpper": 0.025,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "candidate.total",
+          "outcome": "ok",
+          "count": 124,
+          "mean": 0.07642149812096809,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "internal.materialize",
+          "outcome": "ok",
+          "count": 6,
+          "mean": 0.1493734983333462,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.acquire",
+          "outcome": "ok",
+          "count": 4,
+          "mean": 0.0017564679999923106,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.005,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.hydrate",
+          "outcome": "ok",
+          "count": 4,
+          "mean": 0.07340684100001091,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.open",
+          "outcome": "ok",
+          "count": 12,
+          "mean": 0.02512512941666013,
+          "p50BucketUpper": 0.001,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.sync",
+          "outcome": "ok",
+          "count": 12,
+          "mean": 0.07430965341666403,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.1,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.receipt",
+          "outcome": "ok",
+          "count": 96,
+          "mean": 0.005823010625000578,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.025,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.append",
+          "outcome": "ok",
+          "count": 96,
+          "mean": 0.003989258177084301,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.01,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.update",
+          "outcome": "ok",
+          "count": 96,
+          "mean": 0.09329920518750308,
+          "p50BucketUpper": 0.1,
+          "p95BucketUpper": 0.25,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.renew",
+          "outcome": "ok",
+          "count": 11,
+          "mean": 0.0020759851818174043,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.005,
+          "unit": "seconds"
+        },
+        {
+          "name": "cce_operation_seconds",
+          "operation": "document.snapshot",
+          "outcome": "ok",
+          "count": 1,
+          "mean": 0.004391087999974841,
+          "p50BucketUpper": 0.005,
+          "p95BucketUpper": 0.005,
+          "unit": "seconds"
+        }
+      ],
+      "histogramDefinition": "Differences of scraped cumulative histograms; p50/p95 are bucket upper bounds, null means +Inf. Shared service activity can contribute; not exact per-operation samples.",
+      "seed": 90902,
+      "editors": 12,
+      "documents": 4,
+      "initialFileBytes": 8192,
+      "typingMessagesPerSecondPerEditor": 1,
+      "durationSeconds": 15.323890399999996,
+      "steadyTypingDurationSeconds": 8,
+      "generated": 96,
+      "acknowledged": 96,
+      "rejected": {},
+      "unresolved": 0,
+      "syncMs": {
+        "samples": 12,
+        "p50": 92.97340000000258,
+        "p95": 169.08619999999792,
+        "max": 169.08619999999792
+      },
+      "durableAckMs": {
+        "samples": 96,
+        "p50": 202.9835000000021,
+        "p95": 303.46830000000045,
+        "max": 319.0226000000039
+      },
+      "peerPropagationMs": {
+        "samples": 192,
+        "p50": 202.56600000000617,
+        "p95": 302.550900000002,
+        "max": 318.9036000000051
+      },
+      "payloadGrowthBytes": 2502,
+      "correctness": {
+        "durableRows": 96,
+        "contiguous": true,
+        "replicasEqualDatabase": true,
+        "contentHashes": [
+          "ec8826c17b621f47db14bb758701abb734b13314e52572ffd52d73737f9210e3",
+          "2bf87a6876e94d59a9521168bc8bc155d86bad8e51dc383c0d923bc5e30c47ae",
+          "63cee7b7a16f9416a7d151901e4c8f79568f3cfecf644aab754dfd2ef27610a1",
+          "da6a52fce23c7cf15268defe787f7696d66cf8fedc04811147a9d72344b41334"
+        ]
+      },
+      "faultEvidence": []
+    }
+  ],
+  "status": "passed",
+  "database": "PostgreSQL 18.6 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit"
+}

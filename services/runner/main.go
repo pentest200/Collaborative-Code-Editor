@@ -7,8 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -199,6 +199,7 @@ func (w writer) Write(data []byte) (int, error) {
 	return original, nil
 }
 func (a *agent) execute(ctx context.Context, j job) {
+	admittedAt := time.Now()
 	state := "failed"
 	exit := 125
 	truncated := false
@@ -207,10 +208,13 @@ func (a *agent) execute(ctx context.Context, j job) {
 	finish := func() {
 		cleanCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		cleanupAt := time.Now()
 		if a.cleanup(cleanCtx, j) != nil {
-			fmt.Fprintln(os.Stderr, "runner cleanup failed; stopping")
+			slog.Error("runner cleanup failed; stopping")
 			os.Exit(1)
 		}
+		observeStage("cleanup", j.Runtime, cleanupAt)
+		observeStage("total", j.Runtime, admittedAt)
 		request["state"] = state
 		request["exit_code"] = exit
 		request["truncated"] = truncated
@@ -266,6 +270,8 @@ func (a *agent) execute(ctx context.Context, j job) {
 		finish()
 		return
 	}
+	observeStage("startup", j.Runtime, admittedAt)
+	runtimeAt := time.Now()
 	done := make(chan error, 1)
 	go func() { err := command.Wait(); close(c.queue); done <- err }()
 	tick := time.NewTicker(500 * time.Millisecond)
@@ -275,6 +281,8 @@ func (a *agent) execute(ctx context.Context, j job) {
 	sequence := int64(0)
 	stopped := false
 	kill := func() {
+		killAt := time.Now()
+		defer observeStage("termination", j.Runtime, killAt)
 		if stopped {
 			return
 		}
@@ -333,6 +341,7 @@ func (a *agent) execute(ctx context.Context, j job) {
 		}
 	}
 	<-done
+	observeStage("runtime", j.Runtime, runtimeAt)
 	c.mu.Lock()
 	truncated = truncated || c.truncated
 	c.mu.Unlock()
@@ -358,28 +367,29 @@ func (a *agent) execute(ctx context.Context, j job) {
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	startRunnerMetrics(ctx)
 	a := agent{origin: os.Getenv("RUNNER_CONTROL_ORIGIN"), token: os.Getenv("RUNNER_INTERNAL_TOKEN"), root: "/runs", volume: os.Getenv("RUNNER_WORK_VOLUME"), images: map[string]string{"python": os.Getenv("RUNNER_PYTHON_IMAGE"), "javascript": os.Getenv("RUNNER_JAVASCRIPT_IMAGE")}, client: &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	if a.origin == "" || a.token == "" || a.volume == "" {
-		fmt.Fprintln(os.Stderr, "runner configuration required")
+		slog.Error("runner configuration required")
 		os.Exit(1)
 	}
 	info, err := docker(ctx, "info", "--format", "{{json .SecurityOptions}}")
 	if err != nil || !bytes.Contains(info, []byte("name=seccomp,profile=builtin")) {
-		fmt.Fprintln(os.Stderr, "Docker default seccomp required")
+		slog.Error("Docker default seccomp required")
 		os.Exit(1)
 	}
 	for _, image := range a.images {
 		if !regexp.MustCompile(`^sha256:[a-f0-9]{64}$`).MatchString(image) {
-			fmt.Fprintln(os.Stderr, "prebuilt image IDs required")
+			slog.Error("prebuilt image IDs required")
 			os.Exit(1)
 		}
 		if _, err = docker(ctx, "image", "inspect", image); err != nil {
-			fmt.Fprintln(os.Stderr, "runtime image missing")
+			slog.Error("runtime image missing")
 			os.Exit(1)
 		}
 	}
 	if err = a.reconcile(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, "runner reconciliation failed")
+		slog.Error("runner reconciliation failed")
 		os.Exit(1)
 	}
 	ticker := time.NewTicker(time.Second)

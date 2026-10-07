@@ -1,9 +1,11 @@
+import { initTelemetry, startMetrics, measured, parentContext } from "./observability.js";
 import { createServer } from "node:http";
 import { healthHandler } from "./health.js";
 import { initialStateHandler } from "./initial-state.js";
 import { attachRealtime } from "./realtime.js";
 import { checkpointHandler } from "./checkpoints.js";
 
+initTelemetry(); startMetrics();
 const host = process.env.HOST ?? "127.0.0.1";
 const port = Number(process.env.PORT ?? "8081");
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("invalid PORT");
@@ -11,7 +13,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("invali
 const checkpoints = checkpointHandler(process.env.DATABASE_URL ?? "", process.env.COLLAB_INTERNAL_TOKEN ?? (process.env.NODE_ENV === "production" ? "" : "cce_dev_internal_only"));
 const server = createServer((request, response) => {
   if (request.url === "/internal/checkpoints/materialize" || request.url === "/internal/checkpoints/prepare" || request.url === "/internal/search/materialize") {
-    void checkpoints(request, response);
+    void measured("internal.materialize", () => checkpoints(request, response), parentContext(request.headers));
     return;
   }
   if (request.url === "/internal/documents/empty") {

@@ -1,8 +1,12 @@
 # Collaborative Code Editor
 
-Phase 08 adds project-scoped filename/content search from versioned committed Yjs projections and strengthens session/invite expiry checks across lock waits. Collaboration, retained drafts, generation-safe checkpoint restore and restricted private-demo Python/JavaScript runs remain available. [The specification](PROJECT_SPEC.md) defines the intended release; [implementation status](docs/implementation-status.md) records actual verification and remaining gaps. Execution is opt-in on a designated local Docker environment; base Compose leaves Run unavailable.
+A browser workspace with Monaco/Yjs collaboration, authenticated roles and cursors, PostgreSQL durable edit receipts, retained reconnect drafts, generation-safe checkpoints, private immutable Python/JavaScript runs and version-aware search. Phase 09 adds redacted OpenTelemetry, Prometheus/Grafana, reproducible load/failure/recovery checks and release evidence. [The specification](PROJECT_SPEC.md) is authoritative; [implementation status](docs/implementation-status.md) distinguishes verified behavior and remaining gates. Execution stays opt-in on a designated private Docker environment.
+
+[Measurements](docs/measured-release.md) Â· [Claims ledger](docs/claims-ledger.md) Â· [Observability](docs/observability.md) Â· [Deployment preparation](docs/deployment.md) Â· [Backup/recovery](docs/backup.md) Â· [Four-minute demo](docs/demonstration.md) Â· [Interview/resume notes](docs/interview.md)
 
 ## Development
+
+The [local setup and verification runbook](docs/setup.md) records the tested toolchains, combined Compose overrides and isolation requirements for checks.
 
 Requirements: Node.js 24 LTS recommended (Node 22.15+ also supported by the manifests), npm, Go 1.27.1, and Docker Compose. Windows PowerShell may require `npm.cmd` rather than `npm` under restrictive execution policy. Copy `.env.example` to `.env` and add GitHub.com OAuth App credentials. Register `http://localhost:3000/api/v1/auth/github/callback` as the exact callback. Login remains unavailable until credentials are configured; no repository scope is requested.
 
@@ -23,7 +27,7 @@ docker compose -f infra/compose/compose.yaml config
 docker compose -f infra/compose/compose.yaml up --build
 ```
 
-Open `http://localhost:3000` to sign in, create projects, organize files/folders, edit with teammates, invite members, and manage roles. Synced means committed-state exchange; Saving includes local retention and pending server receipts; Saved requires all matching receipts. Offline edits can continue after the document has initialized. Offline — draft retained appears after the browser transaction finishes. Reconnect refreshes authorization and replays original identities. Recovery after worker death waits for its 15-second lease and retry backoff. Ctrl/Cmd+Z undoes local edits while preserving remote edits; undo history resets on file switch/reload.
+Open `http://localhost:3000` to sign in, create projects, organize files/folders, edit with teammates, invite members, and manage roles. Synced means committed-state exchange; Saving includes local retention and pending server receipts; Saved requires all matching receipts. Offline edits can continue after the document has initialized. Offline â€” draft retained appears after the browser transaction finishes. Reconnect refreshes authorization and replays original identities. Recovery after worker death waits for its 15-second lease and retry backoff. Ctrl/Cmd+Z undoes local edits while preserving remote edits; undo history resets on file switch/reload.
 
 Download visible draft exports current text even after a storage failure. Recover drafts exports account/project-scoped generations, including deleted/replaced files. Old-generation or access-denied outboxes stop replay. IndexedDB retention does not cover edits before the transaction completes, browser data eviction, device loss or cleared site data. Storage failure stops typing and exposes export. Explicit logout removes this account's cached drafts and shuts down other tabs; see [provider/privacy contract](contracts/provider.md).
 
@@ -75,4 +79,30 @@ npm.cmd run test:realtime
 npm.cmd run test:recovery # same local stack; automatic reconnect + worker/Redis interruption
 ```
 
-These tests use seeded authenticated sessions rather than live GitHub credentials. The recovery suite routes document WebSockets through Playwright to drop ACKs, duplicate frames and interrupt transport while forwarding accepted traffic to real Go/PostgreSQL. With `CCE_E2E_RESTART=1`, it kills/restarts the local worker and stops/restarts Redis. Run it only against the designated test stack, separately from checkpoint materializer integration tests. Active source is capped independently at 10 MiB; retained update payloads at 1 GiB. Browser state is capped at 2 MiB and outbox at 8 MiB/4096 entries per account/document generation. These quotas do not replace backups or disk monitoring. Measured release work remains Phase 09; versioned search is implemented in Phase 08.
+These tests use seeded authenticated sessions rather than live GitHub credentials. The recovery suite routes document WebSockets through Playwright to drop ACKs, duplicate frames and interrupt transport while forwarding accepted traffic to real Go/PostgreSQL. With `CCE_E2E_RESTART=1`, it kills/restarts the local worker and stops/restarts Redis. Run it only against the designated test stack, separately from checkpoint materializer integration tests. Active source is capped independently at 10 MiB; retained update payloads at 1 GiB. Browser state is capped at 2 MiB and outbox at 8 MiB/4096 entries per account/document generation. These quotas do not replace backups or disk monitoring. Phase 09 measurements and release limits are recorded in the linked reports; short local workloads are not sustained capacity evidence.
+
+## Local observability and release checks
+
+Set `GRAFANA_ADMIN_PASSWORD` and add `infra/compose/compose.observability.yaml` to the existing Compose command. With the private runner configured, also include `compose.observability-runner.yaml`. Metrics/OTLP remain private; Prometheus localhost:9090 and authenticated Grafana localhost:3001 are operator tools. The dashboard separates candidate/DB/hydration/queue/storage and runner stages. See observability definitions before interpreting percentiles.
+
+```powershell
+# Real local PostgreSQL/Compose and observability must already be healthy.
+$env:TEST_DATABASE_URL='postgres://cce:cce_dev_only@127.0.0.1:54329/cce?sslmode=disable'
+$env:CCE_LOAD_TESTS='1'
+npm.cmd run test:load
+npm.cmd run test:measurements
+# Fault/queue suites run sequentially, separately from load measurements.
+$env:CCE_E2E_RESTART='1'
+$env:CCE_E2E_STORAGE_FAILURE='1'
+$env:CCE_EXECUTION_TESTS='1'
+# Also set the documented runner control token and immutable runtime image IDs.
+npm.cmd run test:failure-demo
+npm.cmd run test:jobs-death
+npm.cmd run test:observability
+npm.cmd run test:runner-measurements
+npm.cmd run test:dashboard # with GRAFANA_ADMIN_PASSWORD configured
+$env:CCE_BACKUP_TESTS='1'
+npm.cmd run test:backup
+```
+
+New drill scripts fail for missing prerequisites and do not count skipped tests as passes. Backup briefly quiesces local writers and restores into uniquely named scratch resources, preserving source volumes. Private dumps/detailed output stay ignored in `.tmp`; JSON reports and synthetic actual-workspace screenshots live in `docs/measurements` and `docs/screenshots`. Read the claims ledger before using resume numbers. No production deployment, public sandbox, sustained scale, horizontal failover or optional Phase 10 feature is claimed.

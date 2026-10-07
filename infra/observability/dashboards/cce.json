@@ -1,0 +1,221 @@
+{
+  "uid": "cce-release",
+  "title": "CCE measured operations",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Operation p50 / p95 (s)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95,sum by (le,service,operation)(rate(cce_operation_seconds_bucket[5m])))",
+          "refId": "A",
+          "legendFormat": "p95 {{service}} {{operation}}"
+        },
+        {
+          "expr": "histogram_quantile(0.50,sum by (le,service,operation)(rate(cce_operation_seconds_bucket[5m])))",
+          "refId": "B",
+          "legendFormat": "p50 {{service}} {{operation}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Active connections / rooms",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "{__name__=~\"cce_connections|cce_rooms\"}",
+          "refId": "A",
+          "legendFormat": "{{service}} {{__name__}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Process RSS / candidate heap p95",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "{__name__=~\"cce_process_resident_memory_bytes|process_resident_memory_bytes\"}",
+          "refId": "A",
+          "legendFormat": "{{service}} RSS"
+        },
+        {
+          "expr": "histogram_quantile(0.95,sum by(le)(rate(cce_candidate_heap_bytes_bucket[5m])))",
+          "refId": "B",
+          "legendFormat": "candidate heap p95"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Room queue items / bytes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "{__name__=~\"cce_room_queue_items|cce_room_queue_bytes\"}",
+          "refId": "A",
+          "legendFormat": "{{service}} {{__name__}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Rejections / database failures per second",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(cce_rejections_total[5m]) or rate(cce_database_errors_total[5m])",
+          "refId": "A",
+          "legendFormat": "{{service}} {{code}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Ownership acquisitions",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "cce_ownership_total",
+          "refId": "A",
+          "legendFormat": "{{service}} acquisitions"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Durable backlog",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "cce_job_queue_items",
+          "refId": "A",
+          "legendFormat": "{{service}} {{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Stored payload / physical DB bytes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "cce_storage_bytes",
+          "refId": "A",
+          "legendFormat": "{{service}} {{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Run startup / runtime / cleanup / kill p95 (s)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "cce-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95,sum by(le,stage,runtime)(rate(cce_runner_seconds_bucket[5m])))",
+          "refId": "A",
+          "legendFormat": "{{runtime}} {{stage}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,197 @@
+{
+  "date": "2026-10-05T21:39:00.304Z",
+  "actualCancelledRuns": 2,
+  "definition": "Current runner process cumulative histogram quantile estimates, since its last restart; includes other completed attempts in that process. Not the load interval or an SLO. Hydration estimates use a separate 30-minute rate window.",
+  "queries": [
+    {
+      "name": "runnerStages",
+      "quantile": 0.5,
+      "query": "histogram_quantile(0.5,sum by(le,stage,runtime)(cce_runner_seconds_bucket))",
+      "results": [
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "cleanup"
+          },
+          "seconds": 0.03666666666666667
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "runtime"
+          },
+          "seconds": 1
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "cleanup"
+          },
+          "seconds": 0.03
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "startup"
+          },
+          "seconds": 0.07500000000000001
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "total"
+          },
+          "seconds": 0.375
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "startup"
+          },
+          "seconds": 0.08333333333333334
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "total"
+          },
+          "seconds": 1
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "runtime"
+          },
+          "seconds": 0.175
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "termination"
+          },
+          "seconds": 0.175
+        }
+      ]
+    },
+    {
+      "name": "runnerStages",
+      "quantile": 0.95,
+      "query": "histogram_quantile(0.95,sum by(le,stage,runtime)(cce_runner_seconds_bucket))",
+      "results": [
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "runtime"
+          },
+          "seconds": 9
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "total"
+          },
+          "seconds": 9
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "startup"
+          },
+          "seconds": 0.0975
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "total"
+          },
+          "seconds": 0.4875
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "cleanup"
+          },
+          "seconds": 0.09
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "startup"
+          },
+          "seconds": 0.21999999999999997
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "cleanup"
+          },
+          "seconds": 0.048
+        },
+        {
+          "labels": {
+            "runtime": "python",
+            "stage": "runtime"
+          },
+          "seconds": 0.2425
+        },
+        {
+          "labels": {
+            "runtime": "javascript",
+            "stage": "termination"
+          },
+          "seconds": 0.2425
+        }
+      ]
+    },
+    {
+      "name": "hydration",
+      "quantile": 0.5,
+      "query": "histogram_quantile(0.5,sum by(le,operation)(rate(cce_operation_seconds_bucket{service=\"collab\",operation=~\"document.open|document.hydrate|document.sync\"}[30m])))",
+      "results": [
+        {
+          "labels": {
+            "operation": "document.hydrate"
+          },
+          "seconds": 0.08275862068965517
+        },
+        {
+          "labels": {
+            "operation": "document.open"
+          },
+          "seconds": 0.000721590909090909
+        },
+        {
+          "labels": {
+            "operation": "document.sync"
+          },
+          "seconds": 0.078125
+        }
+      ]
+    },
+    {
+      "name": "hydration",
+      "quantile": 0.95,
+      "query": "histogram_quantile(0.95,sum by(le,operation)(rate(cce_operation_seconds_bucket{service=\"collab\",operation=~\"document.open|document.hydrate|document.sync\"}[30m])))",
+      "results": [
+        {
+          "labels": {
+            "operation": "document.hydrate"
+          },
+          "seconds": 0.21833333333333332
+        },
+        {
+          "labels": {
+            "operation": "document.open"
+          },
+          "seconds": 0.18312499999999987
+        },
+        {
+          "labels": {
+            "operation": "document.sync"
+          },
+          "seconds": 0.18250000000000002
+        }
+      ]
+    }
+  ]
+}

@@ -113,7 +113,9 @@ func (a *App) documentSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	workerURL.Scheme = "ws"
 	workerURL.Path = "/internal/ws/documents/" + documentID
-	worker, resp, err := websocket.DefaultDialer.DialContext(r.Context(), workerURL.String(), http.Header{"Authorization": []string{"Bearer " + assertion}})
+	headers := http.Header{"Authorization": []string{"Bearer " + assertion}}
+	injectTrace(r.Context(), headers)
+	worker, resp, err := websocket.DefaultDialer.DialContext(r.Context(), workerURL.String(), headers)
 	if err != nil {
 		if resp != nil {
 			resp.Body.Close()

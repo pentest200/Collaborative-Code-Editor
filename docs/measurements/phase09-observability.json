@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-05T21:31:12.084Z",
+  "sentinelClasses": 8,
+  "authorizedOutputContainsStdinAndStdout": true,
+  "globalLogAndTraceLeak": false,
+  "metricLabelLeak": false,
+  "scrapeTargets": [
+    {
+      "service": "api",
+      "health": "up"
+    },
+    {
+      "service": "jobs",
+      "health": "up"
+    },
+    {
+      "service": "collab",
+      "health": "up"
+    },
+    {
+      "service": "runner",
+      "health": "up"
+    }
+  ],
+  "crossServiceCorrelation": true,
+  "runnerRuntimeSeries": [
+    {
+      "metric": {
+        "__name__": "cce_runner_seconds_count",
+        "instance": "runner:9091",
+        "job": "cce",
+        "runtime": "javascript",
+        "service": "runner",
+        "stage": "runtime"
+      },
+      "value": "1"
+    },
+    {
+      "metric": {
+        "__name__": "cce_runner_seconds_count",
+        "instance": "runner:9091",
+        "job": "cce",
+        "runtime": "python",
+        "service": "runner",
+        "stage": "runtime"
+      },
+      "value": "1"
+    }
+  ]
+}

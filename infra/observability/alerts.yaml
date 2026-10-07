@@ -1,0 +1,23 @@
+groups:
+  - name: cce
+    rules:
+      - alert: CCEProcessUnreachable
+        expr: up{job="cce"} == 0
+        for: 30s
+        labels: {severity: warning}
+        annotations: {summary: "A configured CCE metrics listener is unreachable"}
+      - alert: CCEDatabaseFailures
+        expr: increase(cce_database_errors_total[1m]) > 10
+        for: 30s
+        labels: {severity: warning}
+        annotations: {summary: "Database errors or policy denials increased; inspect operation metrics"}
+      - alert: CCERoomQueuePressure
+        expr: cce_room_queue_items > 64
+        for: 30s
+        labels: {severity: warning}
+        annotations: {summary: "Aggregate collaboration queue pressure is sustained"}
+      - alert: CCEJobsPending
+        expr: cce_job_queue_items > 100
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Durable background work backlog is sustained"}

@@ -59,11 +59,11 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/projects/{project_id}/runs/{run_id}", a.getRun)
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/runs/{run_id}", a.cancelRun)
 	mux.HandleFunc("GET /api/v1/projects/{project_id}/runs/{run_id}/events", a.runEvents)
-	return mux
+	return a.observed(mux)
 }
 
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, 200, map[string]string{"status": "ok", "service": "api", "phase": "03"})
+	writeJSON(w, 200, map[string]string{"status": "ok", "service": "api", "phase": "09"})
 }
 
 func (a *App) authConfig(w http.ResponseWriter, _ *http.Request) {

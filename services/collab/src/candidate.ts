@@ -1,3 +1,4 @@
+import { measured, candidateHeap, seconds } from "./observability.js";
 import { Worker } from "node:worker_threads";
 
 export type EncodedDocument = { state: Uint8Array; vector: Uint8Array; text?: string; textBytes: number; elapsedMs: number; heapBytes: number };
@@ -37,7 +38,7 @@ parentPort.close();
 
 // Main-thread state is encoded bytes only. Decode, replay, validation, cloning,
 // state/vector encoding and sync-delta computation all happen in isolation.
-export async function encodeCandidate(state: Uint8Array, updates: Uint8Array[] = [], options: { syncVector?: Uint8Array; expectedVector?: Uint8Array; text?: string; projectText?: boolean } = {}): Promise<EncodedDocument & { update?: Uint8Array }> {
+async function candidateWork(state: Uint8Array, updates: Uint8Array[] = [], options: { syncVector?: Uint8Array; expectedVector?: Uint8Array; text?: string; projectText?: boolean } = {}): Promise<EncodedDocument & { update?: Uint8Array }> {
   if (active >= 4) throw new Error("RATE_LIMITED");
   active++;
   let worker: Worker | undefined;
@@ -56,4 +57,8 @@ export async function encodeCandidate(state: Uint8Array, updates: Uint8Array[] =
       task.once("exit", () => { if (!done) finish(new Error("LIMIT_EXCEEDED")); });
     });
   } finally { await worker?.terminate(); active--; }
+}
+
+export async function encodeCandidate(state: Uint8Array, updates: Uint8Array[] = [], options: { syncVector?: Uint8Array; expectedVector?: Uint8Array; text?: string; projectText?: boolean } = {}): Promise<EncodedDocument & { update?: Uint8Array }> {
+ return measured("candidate.total", async () => { const value = await candidateWork(state,updates,options); candidateHeap.observe(value.heapBytes); seconds.observe({operation:"candidate.compute",outcome:"ok"},value.elapsedMs/1000); return value; });
 }

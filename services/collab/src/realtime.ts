@@ -1,3 +1,5 @@
+import { measured, parentContext, rooms as roomMetric, connections, queued, queueBytes, stateBytes, rejection } from "./observability.js";
+import type { Context } from "@opentelemetry/api";
 import { createHmac, createHash, timingSafeEqual, randomUUID } from "node:crypto";
 import type { IncomingMessage, Server as HttpServer } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
@@ -7,7 +9,7 @@ import { encodeCandidate } from "./candidate.js";
 import { decodePresence, encodePresence, cursorColor, type Presence } from "./awareness.js";
 
 type Claims = { iss: string; aud: string; sub: string; sid: string; project_id: string; file_id: string; document_id: string; generation: string; role: string; connection_id: string; exp: number; iat: number };
-type Peer = { socket: WebSocket; claims: Claims; name: string; presence?: Presence; presenceTokens: number; presenceAt: number };
+type Peer = { parent: Context; socket: WebSocket; claims: Claims; name: string; presence?: Presence; presenceTokens: number; presenceAt: number };
 type Room = { value: OwnedState; fence: bigint; stopped: boolean; peers: Set<Peer>; queue: Promise<void>; queued: number; queuedBytes: number; rateTokens: number; rateAt: number; snapshotSequence: bigint; snapshotAt: number; timer?: NodeJS.Timeout; revalidation?: NodeJS.Timeout; idle?: NodeJS.Timeout };
 
 const encoder = new TextEncoder();
@@ -59,9 +61,8 @@ function uuid(bytes: Uint8Array): string {
   const hex = Buffer.from(bytes).toString('hex');
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
-const knownErrors = new Set(['AUTH_REQUIRED','FORBIDDEN','STALE_GENERATION','ROOM_MOVED','STORAGE_UNAVAILABLE','FRAME_INVALID','LIMIT_EXCEEDED','RATE_LIMITED','RECEIPT_MISMATCH','HEAD_CHANGED']);
 function errorCode(error: unknown): string {
-  return error instanceof Error && knownErrors.has(error.message) ? error.message : 'STORAGE_UNAVAILABLE';
+  return rejection(error);
 }
 function receiptBody(sequence: bigint, body: Uint8Array): Uint8Array {
   const value = new Uint8Array(72); new DataView(value.buffer).setBigUint64(0, sequence); value.set(body.subarray(0,64),8); return value;
@@ -102,13 +103,13 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
   }
   function stop(document: string, room: Room, code: string) {
     room.stopped = true; clearInterval(room.timer); clearInterval(room.revalidation); clearTimeout(room.idle);
-    if (rooms.get(document) === room) rooms.delete(document);
+    if (rooms.get(document) === room) { rooms.delete(document); roomMetric.dec(); stateBytes.dec(room.value.state.length); }
     for (const peer of room.peers) { send(peer, errorFrame(code, 'Document must resynchronize')); peer.socket.close(1013); }
   }
   function enqueue(room: Room, bytes: number, work: () => Promise<void>): boolean {
     if (room.stopped || room.queued >= 128 || room.queuedBytes + bytes > 4194304) return false;
-    room.queued++; room.queuedBytes += bytes;
-    room.queue = room.queue.then(work).catch(() => {}).finally(() => { room.queued--; room.queuedBytes -= bytes; });
+    room.queued++; room.queuedBytes += bytes; queued.inc(); queueBytes.inc(bytes);
+    room.queue = room.queue.then(work).catch(() => {}).finally(() => { room.queued--; room.queuedBytes -= bytes; queued.dec(); queueBytes.dec(bytes); });
     return true;
   }
   async function snapshot(document: string, room: Room) {
@@ -137,7 +138,7 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
         if (failed || closing) throw new Error('ROOM_MOVED');
         clearInterval(timer);
         const room: Room = { value, fence, stopped: false, peers: new Set(), queue: Promise.resolve(), queued: 0, queuedBytes: 0, rateTokens: 100, rateAt: performance.now(), snapshotSequence: value.snapshotSequence, snapshotAt: Date.now() };
-        rooms.set(claims.document_id, room);
+        rooms.set(claims.document_id, room); roomMetric.inc(); stateBytes.inc(value.state.length);
         let renewingLease = false;
         room.timer = setInterval(() => {
           if (renewingLease || room.stopped) return; renewingLease = true;
@@ -171,14 +172,14 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
     try {
       const access = await current(claims);
       if (!access || access.role!==claims.role) { socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
-      const room = await roomFor(claims);
+      const room = await measured("document.open",()=>roomFor(claims),parentContext(request.headers));
       if (room.stopped || !await current(claims)) throw new Error('FORBIDDEN');
       wss.handleUpgrade(request,socket,head,ws => {
-        const peer: Peer = { socket: ws, claims, name: access.display_name.slice(0,80), presenceTokens: 10, presenceAt: performance.now() }; room.peers.add(peer); clearTimeout(room.idle);
+        const peer: Peer = { parent: parentContext(request.headers), socket: ws, claims, name: access.display_name.slice(0,80), presenceTokens: 10, presenceAt: performance.now() }; room.peers.add(peer); connections.inc(); clearTimeout(room.idle);
         send(peer,encodeEnvelope(FrameType.HELLO,encoder.encode(JSON.stringify({ protocol:1,file_id:claims.file_id,document_id:claims.document_id,generation:Number(claims.generation),committed_sequence:room.value.sequence.toString() }))));
         ws.on('error', () => { ws.terminate(); });
         ws.on('close', () => {
-          room.peers.delete(peer);
+          if (room.peers.delete(peer)) connections.dec();
           removePresence(room,peer);
           if (room.peers.size || room.stopped || closing) return;
           room.idle = setTimeout(() => {
@@ -211,7 +212,7 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
           }
           const now=performance.now(); room.rateTokens=Math.min(100,room.rateTokens+(now-room.rateAt)*0.1); room.rateAt=now;
           if (room.rateTokens<1) { send(peer,errorFrame('RATE_LIMITED','Room send rate exceeded')); return; } room.rateTokens--;
-          const queued=enqueue(room,frame.body.byteLength,async () => {
+          const accepted=enqueue(room,frame.body.byteLength,() => measured(frame.type===FrameType.SYNC_REQUEST ? "document.sync" : "document.update", async () => {
             try {
               if (room.stopped) throw new Error('ROOM_MOVED');
               if (!await current(claims)) throw new Error('FORBIDDEN');
@@ -230,6 +231,7 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
               const prior=await store.receipt(claims,room.fence,instance,message,hash);
               if (prior!==null) { send(peer,encodeEnvelope(FrameType.DURABLE_ACK,receiptBody(prior,frame.body))); return; }
               const candidate=await encodeCandidate(room.value.state,[update]);
+              const beforeBytes = room.value.state.length;
               let sequence: bigint;
               try { sequence=await store.append(claims,room.fence,room.value.sequence,instance,message,hash,update,candidate.textBytes); }
               catch (error) {
@@ -244,6 +246,7 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
               if (room.stopped) throw new Error('ROOM_MOVED');
               if (sequence===room.value.sequence+1n) room.value={...candidate,sequence};
               else if (sequence>room.value.sequence) room.value=await store.hydrate(claims.document_id);
+              stateBytes.inc(room.value.state.length-beforeBytes);
               const body=new Uint8Array(72+update.length); body.set(receiptBody(sequence,frame.body)); body.set(update,72);
               // Recheck each peer before delivering committed source. Read
               // revocation remains bounded (2s), never an instant-erasure claim.
@@ -254,8 +257,8 @@ export function attachRealtime(server: HttpServer, databaseURL: string, secret: 
               const code=errorCode(error); send(peer,errorFrame(code,'Document operation rejected; unacknowledged work is unsaved'));
               if (code==='ROOM_MOVED' || code==='HEAD_CHANGED' || code==='STORAGE_UNAVAILABLE') stop(claims.document_id,room,code);
             }
-          });
-          if (!queued) send(peer,errorFrame(room.stopped?'ROOM_MOVED':'RATE_LIMITED','Room unavailable or busy'));
+          }, peer.parent));
+          if (!accepted) { rejection(new Error("RATE_LIMITED")); send(peer,errorFrame(room.stopped?'ROOM_MOVED':'RATE_LIMITED','Room unavailable or busy')); }
         });
       });
     } catch { socket.write('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n'); socket.destroy(); }

@@ -298,6 +298,7 @@ func (a *App) emptyDocument(ctx context.Context) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	injectTrace(ctx, request.Header)
 	request.Header.Set("X-Internal-Token", a.cfg.CollabToken)
 	response, err := a.client.Do(request)
 	if err != nil {

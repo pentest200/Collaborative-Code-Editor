@@ -24,11 +24,19 @@
     "test:runs": "node --test tests/e2e/runs.test.mjs",
     "test:search": "node --test tests/e2e/search.test.mjs",
     "dev:web": "npm run dev -w @cce/web",
-    "dev:collab": "npm run dev -w @cce/collab"
+    "dev:collab": "npm run dev -w @cce/collab",
+    "test:load": "node tests/load/workload.mjs",
+    "test:observability": "node --test tests/integration/observability.test.mjs",
+    "test:measurements": "node --test tests/e2e/measurements.test.mjs",
+    "test:failure-demo": "node tests/load/failure-demo.mjs",
+    "test:backup": "node --test tests/integration/backup.test.mjs",
+    "test:jobs-death": "node --test tests/integration/jobs-death.test.mjs",
+    "test:dashboard": "node --test tests/e2e/observability-dashboard.test.mjs",
+    "test:runner-measurements": "node --test tests/integration/runner-measurements.test.mjs"
   },
   "devDependencies": {
     "eslint": "10.11.0",
     "playwright-core": "1.63.0",
-    "yaml": "2.8.1"
+    "yaml": "2.9.1"
   }
 }

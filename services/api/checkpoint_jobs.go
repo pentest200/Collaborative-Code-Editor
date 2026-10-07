@@ -57,7 +57,9 @@ func (a *App) materializeNext(ctx context.Context) (bool, error) {
 	return true, err
 }
 
-func (a *App) materializeCheckpoint(ctx context.Context, project, id string, attempt int64) error {
+func (a *App) materializeCheckpoint(ctx context.Context, project, id string, attempt int64) (resultErr error) {
+	ctx, finish := operation(ctx, "checkpoint.materialize")
+	defer func() { finish(resultErr) }()
 	tx, err := a.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return err

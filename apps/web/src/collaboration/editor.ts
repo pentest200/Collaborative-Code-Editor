@@ -1,3 +1,4 @@
+import { sample } from "./measurements";
 import * as Y from "yjs";
 import type * as Monaco from "monaco-editor";
 import type { MonacoBinding } from "y-monaco";
@@ -39,11 +40,14 @@ export function bindEditor(library: typeof Monaco, editor: Monaco.editor.IStanda
       head: Y.createRelativePositionFromTypeIndex(text,model.getOffsetAt(selection.getPosition()))
     } });
   };
-  const cursor = editor.onDidChangeCursorSelection(publish);
+  let keyAt: number | undefined; let disposed=false;
+ const key = editor.onKeyDown(event => { if (event.browserEvent.key.length===1 || ["Backspace","Delete","Enter"].includes(event.browserEvent.key)) keyAt = performance.now(); });
+ const content = model.onDidChangeContent(() => { if (keyAt === undefined) return; const at=keyAt; keyAt=undefined; requestAnimationFrame(() => requestAnimationFrame(() => { if (!disposed) sample("local_render_ms",performance.now()-at); })); });
+ const cursor = editor.onDidChangeCursorSelection(publish);
   provider.awareness.on("change",render); text.observe(render);
   publish();
   return () => {
-    cursor.dispose(); undoAction.dispose(); redoAction.dispose(); undo.destroy();
+    disposed=true; key.dispose(); content.dispose(); cursor.dispose(); undoAction.dispose(); redoAction.dispose(); undo.destroy();
     provider.awareness.off("change",render); text.unobserve(render); editor.deltaDecorations(decorations,[]); style.remove(); collaborators([]); binding.destroy();
   };
 }

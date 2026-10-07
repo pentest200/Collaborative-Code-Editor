@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+rule_files: [/etc/prometheus/alerts.yaml]
+scrape_configs:
+  - job_name: cce
+    static_configs:
+      - targets: [api:9091]
+        labels: {service: api}
+      - targets: [jobs:9091]
+        labels: {service: jobs}
+      - targets: [collab:9091]
+        labels: {service: collab}
