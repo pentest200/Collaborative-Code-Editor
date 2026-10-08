@@ -77,6 +77,6 @@ export default function Home() {
       {projects.length ? <ul className="project-grid">{projects.map((project) => <li key={project.id}><Link href={`/projects/${project.id}/workspace`} className="project-card"><span className="project-mark">{project.name.slice(0, 1).toUpperCase()}</span><span><strong>{project.name}</strong><small>{project.role}</small></span><span className="arrow" aria-hidden="true">↗</span></Link></li>)}</ul> : <div className="panel">No projects yet. Create one to invite your team.</div>}
     </> : <div className="panel login"><h2>Start with your GitHub account</h2><p>Projects are private to their members.</p>{authEnabled === true ? <a className="button-link" href="/api/v1/auth/github/start">Sign in with GitHub</a> : <p>{authEnabled === false ? "GitHub sign-in is not configured in this environment." : "Login availability could not be checked."}</p>}</div>}
     {error && <p role="alert" className="error">{error}</p>}
-    <footer>Collaborative editing and checkpoints are available. Private-demo runs require execution to be enabled. Content search remains unfinished.</footer>
+    <footer>Collaborative editing, checkpoints and project search are available. Search content updates asynchronously. Private-demo runs require execution to be enabled.</footer>
   </main>;
 }

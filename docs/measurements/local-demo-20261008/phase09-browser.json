@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-08T17:32:21.574Z",
+  "browser": "154.0.4258.53",
+  "headless": true,
+  "viewport": "1440x1000 then 390x844",
+  "typing": "12 sequential characters; wait for receipt between characters, plus offline interval",
+  "renderDefinition": "local edit keydown to second requestAnimationFrame, rendering opportunity proxy, not physical pixel presentation",
+  "peerDefinition": "keyboard dispatch through observed peer Monaco DOM text, includes Playwright polling",
+  "peerRenderMs": {
+    "samples": 12,
+    "p50": 163.72449999999935,
+    "p95": 259.02099999999973,
+    "max": 259.02099999999973
+  },
+  "reconnectIncludingOutboxMs": 2395.0377999999982,
+  "measurements": {
+    "connect_sync_ms": {
+      "samples": 2,
+      "p50": 139.6999999997206,
+      "p95": 217,
+      "max": 217
+    },
+    "local_render_ms": {
+      "samples": 19,
+      "p50": 19,
+      "p95": 34.799999999813735,
+      "max": 34.799999999813735
+    },
+    "local_retention_ms": {
+      "samples": 19,
+      "p50": 5.7000000001862645,
+      "p95": 49.90000000037253,
+      "max": 49.90000000037253
+    },
+    "durable_ack_ms": {
+      "samples": 19,
+      "p50": 104.79999999981374,
+      "p95": 189.10000000009313,
+      "max": 189.10000000009313
+    }
+  },
+  "converged": true,
+  "pageErrors": []
+}

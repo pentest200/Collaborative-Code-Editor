@@ -1,0 +1,9 @@
+{
+  "date": "2026-10-08T17:31:16.760Z",
+  "actualJobsSIGKILL": true,
+  "checkpointAndSearchBlockedAtRealPublication": true,
+  "noPrematureReadyOrProjection": true,
+  "checkpointRecoveredAtAttempt": 2,
+  "exactDownloadAndProjection": true,
+  "leaseExpiry": "fixture accelerated after actual process death; natural five-minute/30-second takeover timing is not measured"
+}

@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-08T17:43:27.208Z",
+  "functionalAcceptanceVerified": true,
+  "privateExecutionVerified": true,
+  "liveOAuthVerified": false,
+  "completeLocalPortfolioDemoVerified": false,
+  "blocker": "manual GitHub callback/session/logout acceptance pending",
+  "finalGithubConfigured": true,
+  "finalPrivateExecutionEnabled": true,
+  "healthyScrapeTargets": [
+    {
+      "service": "runner",
+      "health": "up"
+    },
+    {
+      "service": "api",
+      "health": "up"
+    },
+    {
+      "service": "jobs",
+      "health": "up"
+    },
+    {
+      "service": "collab",
+      "health": "up"
+    }
+  ],
+  "sourceVolumesRetained": true
+}

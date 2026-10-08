@@ -1,0 +1,9 @@
+import assert from "node:assert/strict";
+import {existsSync,readFileSync,mkdirSync,writeFileSync} from "node:fs";
+import {spawnSync} from "node:child_process";
+const configured=new Map();
+for(const file of [".env.demo.local",".env"]){if(!existsSync(file))continue;for(const line of readFileSync(file,"utf8").split(/\r?\n/)){const match=/^\s*([A-Z_]+)\s*=\s*(.*)$/.exec(line);if(!match)continue;let value=match[2].trim();if((value.startsWith('"')&&value.endsWith('"'))||(value.startsWith("'")&&value.endsWith("'")))value=value.slice(1,-1);else value=value.replace(/\s+#.*$/,"");if(value)configured.set(match[1],value);}}
+const names=["GITHUB_CLIENT_SECRET","RUNNER_INTERNAL_TOKEN","GRAFANA_ADMIN_PASSWORD","MINIO_ROOT_PASSWORD"],values=names.map(n=>configured.get(n)).filter(Boolean);assert.ok(values.length>=2,"Configured secrets required for the local boundary check");
+const services=["api","jobs","collab","runner","web","edge","otel-collector","prometheus","grafana","postgres","redis","minio"];let leaks=0;
+for(const name of services){const output=spawnSync("docker",["logs","--since","1h",`collaborative-code-editor-${name}-1`],{encoding:"utf8",maxBuffer:64<<20});assert.equal(output.status,0,`Unable to inspect ${name} logs`);const logs=(output.stdout??"")+(output.stderr??"");for(const value of values)if(logs.includes(value))leaks++;}
+const dir=process.env.CCE_REPORT_DIR??"docs/measurements";mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/configured-secret-redaction.json`,JSON.stringify({date:new Date().toISOString(),configuredSecretKinds:values.length,containersInspected:services.length,secretMatches:leaks,scope:"local last-hour container logs; no secret values emitted"},null,2)+"\n");assert.equal(leaks,0,"Configured secret value found in local container logs; values withheld");console.log("Configured-secret boundary passed; no values printed.");

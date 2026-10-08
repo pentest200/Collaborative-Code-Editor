@@ -1,3 +1,4 @@
+const reportDir = process.env.CCE_REPORT_DIR ?? "docs/measurements";
 // Recovery drill uses only newly named scratch containers/volumes. The source
 // database/volumes are never reset. Dumps contain private data and stay in .tmp.
 import assert from "node:assert/strict";
@@ -57,7 +58,7 @@ test("Phase 09 isolated PostgreSQL and cold MinIO backup recovery, exact replay 
   const tree=await (await request(recoveryOrigin,base+"/tree")).json();const restore=await request(recoveryOrigin,base+`/checkpoints/${cp.id}/restore`,"POST",{},tree.tree_version);assert.equal(restore.status,200);
   const newFile=(await (await request(recoveryOrigin,base+"/tree")).json()).entries.find(f=>f.id===file.file);assert.notEqual(newFile.document_id,file.document);assert.equal(newFile.generation,"2");
   const snapshot=(await copiedPool.query("SELECT encoded_state FROM document_snapshots WHERE document_id=$1",[newFile.document_id])).rows[0];const restoredDoc=new Y.Doc();Y.applyUpdate(restoredDoc,snapshot.encoded_state);assert.equal(restoredDoc.getText("content").toString(),expected);restoredDoc.destroy();
-  mkdirSync("docs/measurements",{recursive:true});writeFileSync("docs/measurements/phase09-backup.json",JSON.stringify({date:new Date().toISOString(),dumpBytes:statSync(dump).size,canonicalMigrations:8,exactAcknowledgedReplay:true,coldMinioCopyVerifiedThroughAuthorizedDownload:true,ownerRestoreFreshGeneration:true,sourceVolumesPreserved:true,scope:"local quiesced pg_dump + cold volume clone; does not establish off-host backup retention, disaster RPO/RTO or host failure resilience"},null,2)+"\n");
+  mkdirSync(reportDir,{recursive:true});writeFileSync(`${reportDir}/phase09-backup.json`,JSON.stringify({date:new Date().toISOString(),dumpBytes:statSync(dump).size,canonicalMigrations:8,exactAcknowledgedReplay:true,coldMinioCopyVerifiedThroughAuthorizedDownload:true,ownerRestoreFreshGeneration:true,sourceVolumesPreserved:true,scope:"local quiesced pg_dump + cold volume clone; does not establish off-host backup retention, disaster RPO/RTO or host failure resilience"},null,2)+"\n");
  }finally{
   client.disconnect();client.doc.destroy();if(copiedPool)await copiedPool.end();
   if(objectsStopped)compose("start","--wait","minio");if(sourceStopped)compose("start","--wait","collab","api","jobs");docker("start","collaborative-code-editor-runner-1");

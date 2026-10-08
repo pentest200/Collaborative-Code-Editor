@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-08T17:26:19.442Z",
+  "scope": "real local services; seeded independent browser sessions, separate live OAuth evidence",
+  "checks": [
+    {
+      "command": "npm.cmd run test:workspace",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 5.0971869,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:failure-demo",
+      "exitCode": 0,
+      "passed": 21,
+      "skipped": 0,
+      "durationSeconds": 271.3190477,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:jobs-death",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 20.93994750000001,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:backup",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 42.44805369999999,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:measurements",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 23.026053399999974,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:observability",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 11.26994670000003,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:runner-measurements",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 17.59304680000001,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:dashboard",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 11.202923500000033,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:load",
+      "exitCode": 0,
+      "passed": 2,
+      "skipped": 0,
+      "durationSeconds": 70.3346641,
+      "success": true
+    }
+  ],
+  "status": "passed",
+  "githubConfigured": true,
+  "existingProjectCount": 747,
+  "existingProjectRowsPreserved": true
+}

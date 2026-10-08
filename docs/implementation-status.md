@@ -1,11 +1,11 @@
 # Implementation status — Phase 09
 
-Updated 6 October 2026 (Asia/Calcutta). PROJECT_SPEC.md remains authoritative. Full specification/status and implementation comparison identified Phase 09 as the earliest unfinished phase; this turn implements exactly Phase 09. Historical Phases 04–08 evidence, failures and unresolved verification limits are retained below. Current Phase 09 implementation/evidence and release gate follow at the end. No Phase 10 implementation, commit, push or deployment is included.
+Updated 8 October 2026 (Asia/Calcutta). PROJECT_SPEC.md remains authoritative. Required Phases 00–09 have implemented functionality and current bounded local acceptance recorded at the end of this document. Historical evidence and the earlier 8 October gated continuation review are preserved below. This task prepares the local portfolio demo, fixes required-phase setup/test/documentation defects, and does not implement Phase 10. Live GitHub authorization initiation is verified with configured credentials; manual authentication/callback/session/logout remains pending, so the complete local portfolio demo is not yet verified.
 
 | Area | Implementation | Verification / remaining gate |
 |---|---|---|
 | Phase 00 monorepo and contracts | Implemented | Existing pinned workspaces/toolchains/migrations preserved. Go/TS framing now uses the specified eight frame types; temporary Phase 03 type 9 removed. Shared ACK/committed-update fixtures pass. |
-| Phase 01 identity and access | Implemented | OAuth fixture, sessions/CSRF, roles/invites and real PostgreSQL API regressions pass. Live GitHub OAuth remains unverified; credentials were not supplied. |
+| Phase 01 identity and access | Implemented | OAuth fixture, sessions/CSRF, roles/invites and real PostgreSQL API regressions pass. Current credentials are configured and real authorization redirect/state/PKCE is verified; live callback/session/logout is still pending. Earlier provider-fixture evidence remains separate. |
 | Phase 02 tree and workspace | Implemented | Existing metadata/tree API regressions pass. File creation now records a same-document snapshot pointer atomically. Semantic tab/role/narrow-screen browser regression passes; Monaco resize overflow is bounded. |
 | Phase 03 gateway, rooms and provider | Implemented | Gateway Origin/session/generation checks, raw viewer denial, two-second read revalidation, ordered project-event replay/resync and stable room identity survive Phase 04 integration. Browser convergence now uses distinct owner/editor accounts; earlier editing contexts shared one owner account. |
 | Phase 04 durable appends and receipts | Implemented and integration tested | Canonical 0004 migration, scoped SQL functions, restricted worker login, contiguous bigint counter, actor/hash/identity deduplication, current session/role/generation/head/fence checks, 1 GiB retained-update payload quota and independent 10 MiB active-source quota. Candidate UTF-8 size is committed atomically as a scalar projection; cross-file accounting and deletion releasing source budget are tested. No direct worker table writes or session-token reads. Database commit precedes encoded authoritative-state replacement, peer update and ACK. |
@@ -19,7 +19,8 @@ Updated 6 October 2026 (Asia/Calcutta). PROJECT_SPEC.md remains authoritative. F
 | Phase 06 preview/restore/drafts | Implemented and browser/integration tested | Current-membership/scope checked list/manifest/download, owner-only verified preparation, atomic latest previous-state capture and fresh document generations/tree events, rollback and edit/delete race tests, workspace panel and real connected/offline generation recovery. Previous-state preview waits for independent successful materialization. |
 | Phase 07 immutable runs and restricted agent | Implemented and integration/browser tested | Receipt-draining Run UI, captured checkpoint jobs, separate authenticated control listener/agent, pinned fixed runtimes, enforced quotas/timeouts/cancellation, authorized sequenced output. Real runtime/resource/crash and UI cut/receipt/output-reconnect acceptance passed; platform and release limits remain below. |
 | Phase 08 search and authorization/race review | Implemented; verification recorded below | Committed-cut PostgreSQL projections, durable coalesced tasks, scoped literal queries, version/freshness UI, session/invite expiry across lock waits. See the final Phase 08 gate below. |
-| Phase 09 observability, measured review and demonstration | Implemented; bounded verification recorded below | Manual OTel, private metrics/collector/Prometheus/Grafana, seeded workload and browser samples, redaction, actual jobs death, backup drill, documentation and claims ledger. Portfolio release remains blocked by live OAuth verification; no production/public-sandbox or sustained-capacity claim. |
+| Phase 09 observability, measured review and demonstration | Implemented; bounded verification recorded below | Manual OTel, private metrics/collector/Prometheus/Grafana, seeded workload and browser samples, redaction, actual jobs death, backup drill, documentation and claims ledger. Current bounded local acceptance passes; portfolio login verification remains blocked on manual live OAuth completion. No production/public-sandbox or sustained-capacity claim. |
+| Phase 10 optional scaling services | Not started; prerequisites blocked | Requires a verified portfolio release and a selected extension. Live GitHub OAuth remains unverified; no multi-worker/Kafka/OpenSearch/Kubernetes extension was selected. See the 8 October continuation review below. |
 
 ## Checks executed in Phase 05
 
@@ -214,3 +215,187 @@ Phase 10 is optional and requires a verified portfolio release plus an explicitl
 - Final frontend/TS build/typecheck/lint/contracts, full 17-test TS/protocol run, isolated Linux API/runner normal/race/vet, 21-test sequential real failure/regression suite, jobs-death, backup, browser measurements, audit and configuration results above remain passed on final application source. Later edits affect only measurement/dashboard tests/configuration and documentation. Final text normalization and `git -c core.autocrlf=false diff --check` passed. All report JSON parses. Actual desktop/narrow workspace and corrected dashboard screenshots were visually inspected. Application services were restored; uniquely named backup scratch resources and diagnostic server were removed. The spec and its duplicate remain unchanged; no commit, push or deployment.
 
 Phase 09 implementation and its required bounded local verification/release review are complete. The portfolio release remains **blocked on credentialed live GitHub OAuth acceptance**, with all additional operational/capacity/retention limits above preserved. The optional next phase is **Phase 10**, **not ready**, and no extension has been selected. This turn stops at Phase 09.
+
+## 8 October 2026 continuation review — Phase 10 blocked
+
+- Read PROJECT_SPEC.md in full and the complete implementation status, then compared the existing source, Compose configuration, npm scripts, documentation and measurement artifacts with the phase prompts. Initial worktree was clean; repository search found no AGENTS.md. Required Phases 00–09 are implemented with their historical bounded acceptance. The only unimplemented phase is **optional Phase 10**; no new required phase is invented.
+- Its complete prompt begins: **"Proceed only after the verified portfolio release"** and **"Implement only the selected extension(s), preserving existing contracts."** The recorded release blocker remains live GitHub OAuth verification, and no extension is selected. Source still uses the configured single-worker origin; the claims ledger correctly lists multi-worker/Kafka/OpenSearch/Kubernetes as unimplemented. No Phase 10 source, integration or acceptance work was started, and no unrelated feature was substituted.
+- Current configuration check found only `.env.example`, with empty GitHub credential placeholders, no local `.env`, and neither GITHUB_CLIENT_ID nor GITHUB_CLIENT_SECRET populated in this execution shell. This checks available local configuration, not every possible external secret store. `loadConfig`/`oauthStart` retain paired-credential validation and AUTH_UNAVAILABLE when login is unconfigured; no auth bypass was added. Credentialed GitHub login/session/logout acceptance remains **unverified**, not failed provider behavior and not satisfied by seeded sessions/provider fixtures.
+- `npm.cmd run check:contracts`: **passed**, OpenAPI 3.1 with 23 active/reserved paths. Node evidence-integrity check: **passed**; all eight historical Phase 09 measurement JSON files parse, both load scenarios retain generated/acknowledged/durable-row equality and zero unresolved work, and all six historical failure-suite entries retain successful exits with zero skips. This is artifact consistency, **not a fresh execution** of those tests or measurements. The 6 October acceptance results and all failed/skipped/blocked historical invocations remain unchanged.
+- Retried Windows `services/runner` `go test -race ./... -count=1` using the repository Go tool, workspace GOCACHE/GOPATH and CGO_ENABLED=1: **blocked before tests**, `runtime/cgo: cc1.exe: sorry, unimplemented: 64-bit mode not compiled in`; exit 1/build failed. The compiler resolves to C:/MinGW/bin/gcc.exe. No runner test passed in this invocation; prior successful Linux race verification remains separate historical evidence.
+- `docker ps --format '{{.Names}} {{.Status}}'`: **failed**, exit 1, Docker Desktop Linux engine named pipe unavailable (`dockerDesktopLinuxEngine`: system cannot find the file specified). No current service health or live database/browser/runner/backup/redaction result was established. Those runtime suites were not executed in this gated review, and are not counted as skipped passes or newly verified behavior. No application/service/volume was changed to bypass the missing phase prerequisites.
+- All existing retention/eviction/device-loss, undo-reset, admission delay, corrupt-history repair, retained-storage/pruning, quota-scale replay, sustained fairness/capacity, slow-client ceilings, long outages, mixed-EOL interoperability, natural materializer lease delay, off-host/PITR/RPO/RTO, execution daemon/host/public-sandbox, alert delivery/long-term tracing and rolling-drain limits in the Phase 09 gate remain. Actual checkpoint/search process death and isolated local backup recovery remain passed **within their earlier recorded scope**; their broader gaps are not reopened or silently closed.
+- This turn changes only this status record. Final `git -c core.autocrlf=false diff --check` passed; the authoritative spec, contracts, application code and historical measurement artifacts remain unchanged. No commit, push or deployment.
+
+**Outcome:** Phase 10 remains **not ready and unimplemented**. Required implementation phases are complete, while the portfolio release is not yet verified. Resume the optional phase only after credentialed live OAuth acceptance closes the recorded release blocker and an extension is selected (multi-worker collaboration, Kafka, OpenSearch or Kubernetes). Stop here before advancing, as requested.
+
+
+## 8 October 2026 local portfolio demo acceptance — current evidence
+
+This task reassessed the required Phases 00–09 against the full specification,
+source, contracts and actual acceptance requirements. Their implementation claim
+is supported by the current bounded checks below; this does not imply live OAuth,
+sustained capacity, production readiness or public sandbox safety. Optional Phase
+10 is explicitly outside this task and remains unimplemented.
+
+### Actual changes and environment
+
+- Preserved the initial user-modified status record and ignored user `.env`.
+  Docker Desktop Linux engine **29.7.2**, 16 CPUs/about 7.64 GiB daemon RAM was
+  available after the sandbox-only connection denial was retried with authorized
+  access. Existing containers were stopped initially. Started the documented base,
+  then explicitly private runner/observability/test stacks; existing PostgreSQL,
+  MinIO, runner and operator volumes were retained. No data reset or volume wipe.
+- Read-only PostgreSQL checks verified all canonical **0001–0008** stamps,
+  `fsync=on` and `synchronous_commit=on`. Initial project count was 706 before
+  checks added their own fixtures. The acceptance orchestrator independently
+  verified its 747 pre-existing project rows all remain.
+  This is row preservation evidence, not an off-host disaster-recovery guarantee.
+- Added `scripts/local-demo.ps1`: explicit Base/Private modes, optional local test
+  ports/observability, paired root configuration, generated private control token,
+  immutable existing runtime image IDs (build missing pinned templates only), and
+  reuse of existing operator credentials. Runtime settings persist in ignored
+  `.env.demo.local`; user `.env` is not overwritten. Base mode stops the runner
+  and leaves execution unavailable. All published endpoints bind **127.0.0.1**.
+- Fixed `.dockerignore` to exclude `.env`/`.env.*` from contexts and `.gitignore`
+  to ignore generated local runtime settings. The original filter omitted the now
+  credentialed `.env`; no root env file is copied by the application Dockerfiles.
+  A configured-secret scan found zero matches in the inspected last-hour logs of
+  twelve containers, without emitting any secret value.
+- Corrected the home-page footer's stale claim that content search was unfinished.
+  Search remains an eventual authorized projection. Added reproducible check/
+  acceptance/secret-scan scripts and an interactive live OAuth check. Report and
+  screenshot directory overrides keep these current results separate from the
+  October 6 reports; historical JSON/screenshots were not replaced.
+- The logout browser test assumed Monaco must remain mounted with empty source.
+  Project access revalidation can legitimately remove the entire editor first.
+  It now requires either an absent editor or empty source, **and** absence of a
+  source sentinel in DOM, purged account caches, and closed document transports,
+  before independently testing another account. No product privacy requirement
+  or permission boundary was weakened.
+- README now supplies tested setup/base/private/check commands, required OAuth
+  callback configuration, migration inspection, isolated Linux race command path,
+  manual login acceptance and the four-minute demonstration. No optional scaling,
+  commit, push, deployment or public exposure.
+
+### Checks executed now
+
+- Final `npm.cmd run typecheck`, `npm.cmd run lint`, `npm.cmd run build`,
+  `npm.cmd run check:contracts`: **passed** on the final application source.
+  OpenAPI 3.1/23 active-reserved paths parse. Full `npm.cmd run test` with explicit
+  administrative/restricted PostgreSQL URLs: **17 passed, 0 skipped** (14 collab,
+  62.789s; three protocol, 0.395s). This includes real crash/fence/receipt/snapshot/
+  quota/authorization/awareness/search and telemetry/protocol regressions.
+- Isolated supported Linux `golang:1.27.1-bookworm` API/runner normal tests,
+  race tests and vet: **all passed**, zero verbose test skips. API normal/race
+  **15.075 / 15.375s**, runner **0.008 / 1.023s**. Jobs and runner were stopped
+  during queue tests and restored in `finally`; the supervisor package has no unit
+  tests and its resource enforcement is established by real execution acceptance.
+  The actual Docker command (repository/cache paths used in this run) was:
+
+```powershell
+docker run --rm --network collaborative-code-editor_private -e TEST_DATABASE_URL='postgres://cce:cce_dev_only@postgres:5432/cce?sslmode=disable' -e TEST_COLLAB_ORIGIN='http://collab:8081' -e TEST_ARTIFACT_ENDPOINT='http://minio:9000' -v 'C:/Users/Ujjwal Shreshtha/OneDrive/Documents/Collaborative Code Editor:/workspace:ro' -v 'C:/Users/Ujjwal Shreshtha/OneDrive/Documents/Collaborative Code Editor/.gopath/pkg/mod:/go/pkg/mod' -v 'C:/Users/Ujjwal Shreshtha/OneDrive/Documents/Collaborative Code Editor/.go-cache/linux:/root/.cache/go-build' -w /workspace/services/api golang:1.27.1-bookworm sh -c 'go test -v ./... -count=1 && go test -v -race ./... -count=1 && go vet ./... && cd /workspace/services/runner && go test -v ./... -count=1 && go test -v -race ./... -count=1 && go vet ./...'
+```
+
+- Windows runner `go test -race ./... -count=1`, CGO_ENABLED=1 and repository
+  Go/cache paths: **blocked before tests**, exit 1, `runtime/cgo: cc1.exe: sorry,
+  unimplemented: 64-bit mode not compiled in`. Linux success is separate current
+  evidence; Windows is not reported as passed.
+- Current sequential acceptance: **28 browser/integration tests plus two load
+  scenarios passed, zero skips**. [Machine-readable evidence](measurements/local-demo-20261008/acceptance.json):
+
+| Command | Actual result |
+|---|---|
+| `npm.cmd run test:workspace` | 1 tests passed; 0 skipped; exit 0; 5.10s |
+| `npm.cmd run test:failure-demo` | 21 tests passed; 0 skipped; exit 0; 271.32s |
+| `npm.cmd run test:jobs-death` | 1 tests passed; 0 skipped; exit 0; 20.94s |
+| `npm.cmd run test:backup` | 1 tests passed; 0 skipped; exit 0; 42.45s |
+| `npm.cmd run test:measurements` | 1 tests passed; 0 skipped; exit 0; 23.03s |
+| `npm.cmd run test:observability` | 1 tests passed; 0 skipped; exit 0; 11.27s |
+| `npm.cmd run test:runner-measurements` | 1 tests passed; 0 skipped; exit 0; 17.59s |
+| `npm.cmd run test:dashboard` | 1 tests passed; 0 skipped; exit 0; 11.20s |
+| `npm.cmd run test:load` | 2 load scenarios passed; 0 skipped; exit 0; 70.33s |
+
+The six-suite failure demonstration contains realtime **1**, recovery **10**,
+checkpoints **1**, search **1**, immutable runs **1**, real execution/resource
+acceptance **7**. Covers owner/editor/viewer and raw viewer denial, tree operations/
+rename/deletion/event replay, concurrent edits/cursors/undo, durable crash recovery,
+offline original-ID replay, revocation/session/logout privacy, Redis/storage failure,
+checkpoint cuts/preview/download/restore, separate pending old-generation drafts,
+search freshness/visibility, immutable run capture/SSE resume, and real resource,
+timeout/cancel/flood/PID/OOM/CPU/network/root/secret restrictions.
+
+The actual restore browser test retains pending offline edits in the old generation,
+verifies no old outbox transmission or head advancement after restore, reproduces
+that draft's text and exports the separate generation. Actual jobs SIGKILL and
+local quiesced backup/isolated exact restoration pass with their earlier accelerated
+lease/local-copy scope qualifications. Redaction verifies authorized source/stdin/
+stdout separately from global logs/traces/metric labels. Authenticated Grafana
+queries/rendering and four `promtool` alert rules/config validate.
+
+Current raw load:
+
+- 5 editors / 1 documents: **165 generated = 165 acknowledged = 165 contiguous hashed rows**, **0 unresolved**, observed rejection frames **{'RATE_LIMITED': 1}**. All replicas equal independent DB replay. ACK p50/p95 **14132.8 / 24365.6 ms**.
+- 12 editors / 4 documents: **96 generated = 96 acknowledged = 96 contiguous hashed rows**, **0 unresolved**, observed rejection frames **{'RATE_LIMITED': 3}**. All replicas equal independent DB replay. ACK p50/p95 **197.7 / 361.9 ms**.
+
+Rejection counts are observed error frames; unreceipted/rejected identities are
+retained/retried, not silently omitted. The five-editor scenario includes the
+120-frame burst and deliberate twelve-second retry wait, which dominate ACK
+percentiles. Do not turn these short loopback tests into capacity/SLO claims.
+Numeric browser timings are paint-opportunity proxies; process RSS and candidate
+worker heap/compute histograms retain distinct definitions in the JSON reports.
+Actual current desktop/narrow workspace and Grafana screenshots were inspected.
+
+### Failed attempts and outstanding live OAuth
+
+- First private launcher invocation stopped on Windows PowerShell classifying
+  Docker progress stderr as NativeCommandError under Stop. It was **not a pass**;
+  the launcher now judges Docker's actual exit code and its retry succeeded.
+- First sequential acceptance failed the logout locator: **8 recovery cases passed,
+  two failed including the parent**, no skips. Source removal made the assumed
+  `.view-lines` locator disappear. That attempt is preserved in
+  [acceptance-attempt-1.json](measurements/local-demo-20261008/acceptance-attempt-1.json)
+  and [failures-attempt-1.json](measurements/local-demo-20261008/failures-attempt-1.json).
+  The stronger corrected privacy test and full sequential rerun passed. No failed
+  invocation is counted as passed.
+- Root `.env` now contains a nonempty GitHub credential pair. Base API correctly
+  reports `github_enabled=true`, `execution_enabled=false`; private mode explicitly
+  enables execution. Browser-control surfaces were unavailable, so a purpose-built
+  interactive Edge test handed GitHub authentication/consent to the user.
+  `npm.cmd run test:oauth-live` reached the real GitHub authorization redirect and
+  verified localhost callback URL/state/PKCE S256, but the ten-minute manual wait
+  elapsed without completion. **Callback, application session, protected project
+  read and logout remain unverified**, not a provider-fixture pass or proof that
+  the credential pair is invalid. [Sanitized evidence](measurements/local-demo-20261008/live-oauth.json)
+  emits no secret, cookie, authorization-code, state or identity values.
+
+To finish live OAuth, verify your GitHub OAuth App Homepage URL is
+`http://localhost:3000` and callback is exactly
+`http://localhost:3000/api/v1/auth/github/callback`; retain its matching client
+ID/secret in ignored `.env`. With the local stack healthy, run
+`npm.cmd run test:oauth-live`, complete GitHub sign-in/consent in the newly opened
+Edge window, and let the check verify the real callback, HttpOnly/SameSite app
+session, authorized project read and sign-out/401 afterward. Do not paste secrets
+or substitute seeded/provider-fixture sessions for this result.
+
+### Current verdict and preserved limits
+
+**Bounded local functionality and explicitly private execution are verified. The
+complete local portfolio demo including live GitHub login is NOT yet verified;
+manual real OAuth completion is the remaining concrete release blocker.**
+All historical material retention/eviction/device-loss, undo-reset, admission delay,
+corrupt-history repair, retained-storage/pruning, quota-scale replay/materialization,
+sustained hostile fairness/capacity/WAN/slow-client ceilings, long outages,
+mixed-EOL interoperability, natural materializer lease delays, off-host/PITR/RPO/RTO,
+daemon/host-loss/shared-kernel public sandbox, alert delivery/long-term tracing and
+rolling-drain limits remain. Earlier scoped recovery gaps closed by actual jobs
+death/local backup are not reopened or extended into unverified guarantees.
+No production/public execution or Phase 10 readiness claim is made.
+
+Final documented launcher checks also passed: `local-demo.ps1 -Mode Base` stopped
+private execution and reported it disabled; `-Mode Private -TestPorts -Observability`
+restored the explicitly enabled private stack. Both preserved existing volumes.
+Final API configuration and all four scrape targets validate, and the configured
+secret scan passed again after these restarts. [Current readiness](measurements/local-demo-20261008/readiness.json)
+records functional/private success and complete-portfolio/live-OAuth verification
+as false. The authoritative spec and October 6 reports/screenshots are unchanged.

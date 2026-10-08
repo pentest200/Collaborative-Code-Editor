@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-08T17:21:01.388Z",
+  "checks": [
+    {
+      "command": "npm.cmd run test:realtime",
+      "passed": 1,
+      "skipped": 0,
+      "exitCode": 0,
+      "durationSeconds": 41.048388,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:recovery",
+      "passed": 8,
+      "skipped": 0,
+      "exitCode": 1,
+      "durationSeconds": 115.01108430000002,
+      "success": false
+    }
+  ]
+}

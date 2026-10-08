@@ -1,3 +1,4 @@
+const reportDir = process.env.CCE_REPORT_DIR ?? "docs/measurements";
 // Designated local acceptance stack only. Seeded, bounded real Go/TS/PostgreSQL
 // workload; independent sessions; no OAuth bypass endpoint or production fault API.
 import assert from "node:assert/strict";
@@ -125,7 +126,7 @@ async function main(){
  const report={date:new Date().toISOString(),toolchains:{node:process.version,npm:execFileSync("npm.cmd",["--version"],{shell:true,encoding:"utf8"}).trim(),yjs:"13.6.27"},host:{os:platform(),release:release(),cpu:cpus()[0]?.model,logicalCPUs:cpus().length,ramBytes:totalmem()},topology:"Windows raw clients -> localhost Caddy -> Go -> one TS worker -> PostgreSQL in Docker Desktop; loopback, not WAN",scenarios:[],status:"running"};
  try{report.database=(await pool.query("SELECT version() AS version")).rows[0].version;report.scenarios.push(await workload(pool,{editors:5,documents:1,seconds:8,seed:90901,size:1024,faults:true}));report.scenarios.push(await workload(pool,{editors:12,documents:4,seconds:8,seed:90902,size:8192}));report.status="passed";}
  catch(error){report.status="failed";report.failure=error.message;throw error;}
- finally{mkdirSync("docs/measurements",{recursive:true});writeFileSync("docs/measurements/phase09-load.json",JSON.stringify(report,null,2)+"\n");await pool.end();}
+ finally{mkdirSync(reportDir,{recursive:true});writeFileSync(`${reportDir}/phase09-load.json`,JSON.stringify(report,null,2)+"\n");await pool.end();}
  console.log(JSON.stringify(report.scenarios.map(s=>({editors:s.editors,documents:s.documents,ack:s.durableAckMs,peer:s.peerPropagationMs,rejected:s.rejected,correctness:s.correctness.replicasEqualDatabase})),null,2));
 }
 if(process.argv[1]?.endsWith("workload.mjs"))await main();

@@ -9,4 +9,7 @@ dist
 .gopath
 .tools
 .tmp
+.env
+.env.*
+!.env.example
 *.log

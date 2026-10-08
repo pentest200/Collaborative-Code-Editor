@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-08T17:20:50.626Z",
+  "scope": "real local services; seeded independent browser sessions, separate live OAuth evidence",
+  "checks": [
+    {
+      "command": "npm.cmd run test:workspace",
+      "exitCode": 0,
+      "passed": 1,
+      "skipped": 0,
+      "durationSeconds": 10.060289899999999,
+      "success": true
+    },
+    {
+      "command": "npm.cmd run test:failure-demo",
+      "exitCode": 1,
+      "passed": 9,
+      "skipped": 0,
+      "durationSeconds": 156.5685404,
+      "success": false
+    }
+  ],
+  "status": "failed",
+  "githubConfigured": true,
+  "existingProjectCount": 734,
+  "failure": "failure-demo failed or skipped; inspect .tmp/local-demo/failure-demo.txt"
+}

@@ -32,7 +32,8 @@
     "test:backup": "node --test tests/integration/backup.test.mjs",
     "test:jobs-death": "node --test tests/integration/jobs-death.test.mjs",
     "test:dashboard": "node --test tests/e2e/observability-dashboard.test.mjs",
-    "test:runner-measurements": "node --test tests/integration/runner-measurements.test.mjs"
+    "test:runner-measurements": "node --test tests/integration/runner-measurements.test.mjs",
+    "test:oauth-live": "node tests/e2e/live-oauth.mjs"
   },
   "devDependencies": {
     "eslint": "10.11.0",

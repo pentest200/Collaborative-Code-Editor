@@ -5,6 +5,7 @@ coverage/
 *.tsbuildinfo
 .env
 .env.local
+.env.demo.local
 .DS_Store
 *.log
 .npm-cache/

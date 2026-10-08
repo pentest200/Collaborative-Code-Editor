@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-08T17:31:57.412Z",
+  "dumpBytes": 1965052,
+  "canonicalMigrations": 8,
+  "exactAcknowledgedReplay": true,
+  "coldMinioCopyVerifiedThroughAuthorizedDownload": true,
+  "ownerRestoreFreshGeneration": true,
+  "sourceVolumesPreserved": true,
+  "scope": "local quiesced pg_dump + cold volume clone; does not establish off-host backup retention, disaster RPO/RTO or host failure resilience"
+}

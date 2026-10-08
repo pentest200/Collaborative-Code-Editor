@@ -1,3 +1,4 @@
+const reportDir = process.env.CCE_REPORT_DIR ?? "docs/measurements";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {test} from "node:test";
@@ -20,6 +21,6 @@ test("Phase 09 measures actual runner startup/runtime/kill/cleanup separately",{
    const query=`histogram_quantile(${q},${expr})`,response=await fetch("http://127.0.0.1:9090/api/v1/query?query="+encodeURIComponent(query));assert.ok(response.ok);const body=await response.json();assert.equal(body.status,"success");assert.ok(body.data.result.length);report.queries.push({name,quantile:q,query,results:body.data.result.map(r=>({labels:r.metric,seconds:Number.isFinite(Number(r.value[1]))?Number(r.value[1]):null}))});
   }
   for(const stage of ["startup","runtime","termination","cleanup","total"])assert.ok(report.queries.some(q=>q.results.some(r=>r.labels.stage===stage&&r.labels.runtime==="javascript"&&r.seconds!==null)),`Missing measured ${stage}`);
-  mkdirSync("docs/measurements",{recursive:true});writeFileSync("docs/measurements/phase09-stages.json",JSON.stringify(report,null,2)+"\n");
+  mkdirSync(reportDir,{recursive:true});writeFileSync(`${reportDir}/phase09-stages.json`,JSON.stringify(report,null,2)+"\n");
  }finally{await pool.query("UPDATE sessions SET revoked_at=clock_timestamp() WHERE user_id=$1",[user.id]);await pool.end();}
 });

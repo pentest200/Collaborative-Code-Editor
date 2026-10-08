@@ -1,3 +1,4 @@
+const reportDir = process.env.CCE_REPORT_DIR ?? "docs/measurements";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -13,5 +14,5 @@ for(const name of ["realtime","recovery","checkpoints","search","runs","executio
  const output=(result.stdout??"")+(result.stderr??"");const passed=Number(/# pass (\d+)/.exec(output)?.[1]??0),skipped=Number(/# skipped (\d+)/.exec(output)?.[1]??0);
  const success=result.status===0&&passed>0&&skipped===0;report.checks.push({command:`npm.cmd run test:${name}`,passed,skipped,exitCode:result.status,durationSeconds:(performance.now()-start)/1000,success});
  mkdirSync(".tmp/phase09-failures",{recursive:true});writeFileSync(`.tmp/phase09-failures/${name}.txt`,output);console.log(`${name}: ${passed} passed, ${skipped} skipped, exit ${result.status}`);
- mkdirSync("docs/measurements",{recursive:true});writeFileSync("docs/measurements/phase09-failures.json",JSON.stringify(report,null,2)+"\n");assert.ok(success,`${name} failed or skipped; see .tmp/phase09-failures/${name}.txt`);
+ mkdirSync(reportDir,{recursive:true});writeFileSync(`${reportDir}/phase09-failures.json`,JSON.stringify(report,null,2)+"\n");assert.ok(success,`${name} failed or skipped; see .tmp/phase09-failures/${name}.txt`);
 }

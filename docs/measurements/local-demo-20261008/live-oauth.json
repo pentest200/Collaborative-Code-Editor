@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-08T17:13:44.676Z",
+  "kind": "live GitHub OAuth; manual authentication and consent",
+  "status": "blocked_or_failed",
+  "configured": true,
+  "redirectVerified": true,
+  "callbackVerified": false,
+  "sessionVerified": false,
+  "protectedProjectsVerified": false,
+  "logoutVerified": false,
+  "reason": "manual authentication pending"
+}

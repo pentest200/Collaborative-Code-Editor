@@ -1,3 +1,5 @@
+const screenshotDir = process.env.CCE_SCREENSHOT_DIR ?? "docs/screenshots";
+const reportDir = process.env.CCE_REPORT_DIR ?? "docs/measurements";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { chromium } from "playwright-core";
@@ -19,6 +21,6 @@ test("Phase 09 authenticated provisioned Grafana dashboard queries and actual sc
   const page=await context.newPage(),errors=[],pending=[];let queries=0;
   page.on("response",response=>{if(response.url().includes("/api/ds/query")){queries++;pending.push((async()=>{assert.equal(response.status(),200);const body=await response.json();for(const result of Object.values(body.results??{}))if(result.error)errors.push(result.error);})());}});
   await page.goto(origin+"/d/cce-release");await page.getByText("CCE measured operations",{exact:true}).first().waitFor();await page.waitForTimeout(6000);await Promise.all(pending);assert.ok(queries>=9);assert.deepEqual(errors,[]);assert.equal(await page.getByText("Panel plugin not found",{exact:false}).count(),0);
-  mkdirSync("docs/screenshots",{recursive:true});await page.screenshot({path:"docs/screenshots/phase09-observability.png",fullPage:true});mkdirSync("docs/measurements",{recursive:true});writeFileSync("docs/measurements/phase09-dashboard.json",JSON.stringify({date:new Date().toISOString(),authenticatedDashboard:true,provisionedPanels:data.dashboard.panels.length,successfulQueryRequests:queries,queryErrors:errors,missingPanelPlugins:0},null,2)+"\n");
+  mkdirSync(screenshotDir,{recursive:true});await page.screenshot({path:`${screenshotDir}/phase09-observability.png`,fullPage:true});mkdirSync(reportDir,{recursive:true});writeFileSync(`${reportDir}/phase09-dashboard.json`,JSON.stringify({date:new Date().toISOString(),authenticatedDashboard:true,provisionedPanels:data.dashboard.panels.length,successfulQueryRequests:queries,queryErrors:errors,missingPanelPlugins:0},null,2)+"\n");
  }finally{await browser.close();}
 });

@@ -1,3 +1,4 @@
+const reportDir = process.env.CCE_REPORT_DIR ?? "docs/measurements";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -31,7 +32,7 @@ test("Phase 09 actual jobs process death during checkpoint and search publicatio
   compose("start","jobs");stopped=false;
   await until(async()=>{const cp=(await pool.query("SELECT state,attempt FROM checkpoints WHERE id=$1",[checkpoint])).rows[0];const search=(await pool.query("SELECT content FROM search_documents WHERE file_id=$1",[data.files[0].file])).rows[0];return cp.state==="ready"&&Number(cp.attempt)===2&&search?.content==="// Worker-death fixture\n";},"Killed consumers did not recover exact captured inputs");
   const download=await fetch(origin.replace("localhost","127.0.0.1")+`/api/v1/projects/${data.project}/checkpoints/${checkpoint}/files/${data.files[0].file}`,{headers:{Cookie:`cce_session=${user.token}`}});assert.equal(download.status,200);assert.ok(sha(await download.text()).equals(sha("// Worker-death fixture\n")));
-  mkdirSync("docs/measurements",{recursive:true});writeFileSync("docs/measurements/phase09-jobs-death.json",JSON.stringify({date:new Date().toISOString(),actualJobsSIGKILL:true,checkpointAndSearchBlockedAtRealPublication:true,noPrematureReadyOrProjection:true,checkpointRecoveredAtAttempt:2,exactDownloadAndProjection:true,leaseExpiry:"fixture accelerated after actual process death; natural five-minute/30-second takeover timing is not measured"},null,2)+"\n");
+  mkdirSync(reportDir,{recursive:true});writeFileSync(`${reportDir}/phase09-jobs-death.json`,JSON.stringify({date:new Date().toISOString(),actualJobsSIGKILL:true,checkpointAndSearchBlockedAtRealPublication:true,noPrematureReadyOrProjection:true,checkpointRecoveredAtAttempt:2,exactDownloadAndProjection:true,leaseExpiry:"fixture accelerated after actual process death; natural five-minute/30-second takeover timing is not measured"},null,2)+"\n");
  }finally{
   await lock.query("SELECT pg_advisory_unlock_all()").catch(()=>{});lock.release();await pool.query(`DROP TRIGGER IF EXISTS ${triggers[0]} ON checkpoint_files; DROP TRIGGER IF EXISTS ${triggers[1]} ON search_documents; DROP FUNCTION IF EXISTS ${fn}()`).catch(()=>{});if(stopped)compose("start","jobs");if(data)await pool.query("UPDATE sessions SET revoked_at=clock_timestamp() WHERE user_id=$1",[data.users[0].id]);await pool.end();
  }

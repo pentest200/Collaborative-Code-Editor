@@ -189,10 +189,14 @@ test('Phase 05 real browser recovery, selective undo, awareness and privacy', {s
     await t.test('logout clears account caches and closes another tab without cross-account reuse',async()=>{
       const f=await pair(browser,pool);const a=f.pages[0];
       try {
-        await append(a,'private');await settled(a);
+        const marker='logout-source-sentinel';await append(a,marker);await settled(a);assert.ok((await visible(a)).includes(marker));
         const home=await f.contexts[0].newPage();await home.goto(origin);await home.getByRole('button',{name:'Sign out'}).click();
         await until(async()=>(await readRows(home)).length===0,'Logout did not purge account cache');
-        await until(async()=>await visible(a)==='','Other tab retained source after logout');
+        // The provider clears its model, while project revalidation may remove
+        // the editor altogether. Both must remove source, caches and transports.
+        await until(async()=>{const count=await a.locator('.view-lines').count();return count===0||await visible(a)==='';},'Other tab retained source after logout');
+        assert.equal((await a.content()).includes(marker),false,'Logged-out source remains in the DOM');
+        await until(()=>f.controls[0].routes.length===0,'Document transport survived logout');
         await f.contexts[0].addCookies([{name:'cce_session',value:f.data.identities[1].token,domain:'localhost',path:'/'}]);
         await a.reload();await a.getByRole('button',{name:'File: main.js'}).click();await settled(a);
         const rows=await readRows(a);assert.ok(rows.every(row=>row.scope.userID===f.data.identities[1].user));

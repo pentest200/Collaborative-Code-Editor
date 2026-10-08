@@ -1,3 +1,4 @@
+const reportDir = process.env.CCE_REPORT_DIR ?? "docs/measurements";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -33,6 +34,6 @@ test("Phase 09 live metrics, correlated OTLP spans and sentinel redaction across
   for(const block of resources){const service=/service.name: Str\(([^)]+)\)/.exec(block)?.[1];if(!service)continue;for(const trace of block.matchAll(/Trace ID\s*:\s*([0-9a-f]{32})/g)){const set=services.get(trace[1])??new Set();set.add(service);services.set(trace[1],set);}}
   assert.ok([...services.values()].some(set=>set.has("cce-api")&&set.has("cce-collab")),"No cross-service trace correlation captured");
   const numeric=await (await fetch("http://127.0.0.1:9090/api/v1/query?query="+encodeURIComponent('cce_runner_seconds_count{stage="runtime"}'))).json();assert.ok(numeric.data.result.length>0);
-  mkdirSync("docs/measurements",{recursive:true});writeFileSync("docs/measurements/phase09-observability.json",JSON.stringify({date:new Date().toISOString(),sentinelClasses:sentinels.length,authorizedOutputContainsStdinAndStdout:true,globalLogAndTraceLeak:false,metricLabelLeak:false,scrapeTargets:metrics.data.activeTargets.map(t=>({service:t.labels.service,health:t.health})),crossServiceCorrelation:true,runnerRuntimeSeries:numeric.data.result.map(r=>({metric:r.metric,value:r.value[1]}))},null,2)+"\n");
+  mkdirSync(reportDir,{recursive:true});writeFileSync(`${reportDir}/phase09-observability.json`,JSON.stringify({date:new Date().toISOString(),sentinelClasses:sentinels.length,authorizedOutputContainsStdinAndStdout:true,globalLogAndTraceLeak:false,metricLabelLeak:false,scrapeTargets:metrics.data.activeTargets.map(t=>({service:t.labels.service,health:t.health})),crossServiceCorrelation:true,runnerRuntimeSeries:numeric.data.result.map(r=>({metric:r.metric,value:r.value[1]}))},null,2)+"\n");
  }finally{client.disconnect();client.doc.destroy();await pool.query("UPDATE sessions SET revoked_at=clock_timestamp() WHERE user_id=$1",[user.id]);await pool.end();}
 });
