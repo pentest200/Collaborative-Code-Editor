@@ -24,13 +24,16 @@ const maxFolderDepth = 16
 const maxPathBytes = 1024
 
 type TreeEntry struct {
-	ID         string  `json:"id"`
-	ParentID   *string `json:"parent_id"`
-	Name       string  `json:"name"`
-	Kind       string  `json:"kind"`
-	Language   *string `json:"language"`
-	DocumentID *string `json:"document_id"`
-	Generation string  `json:"generation"`
+	StorageKind string  `json:"storage_kind,omitempty"`
+	ByteSize    int     `json:"byte_size,omitempty"`
+	MediaType   string  `json:"media_type,omitempty"`
+	ID          string  `json:"id"`
+	ParentID    *string `json:"parent_id"`
+	Name        string  `json:"name"`
+	Kind        string  `json:"kind"`
+	Language    *string `json:"language"`
+	DocumentID  *string `json:"document_id"`
+	Generation  string  `json:"generation"`
 }
 
 type TreeResponse struct {
@@ -65,6 +68,10 @@ func languageForName(name string) string {
 		return "python"
 	case ".go":
 		return "go"
+	case ".java":
+		return "java"
+	case ".cpp", ".cc", ".cxx", ".hpp", ".h", ".c":
+		return "cpp"
 	case ".json":
 		return "json"
 	case ".css":
@@ -121,8 +128,9 @@ func nullableString(value sql.NullString) *string {
 }
 
 func loadEntries(ctx context.Context, tx pgx.Tx, projectID string) (map[string]TreeEntry, error) {
-	rows, err := tx.Query(ctx, `SELECT id::text,parent_id::text,name,kind,language,current_document_id::text,generation
-		FROM files WHERE project_id=$1 AND tombstoned_at IS NULL ORDER BY name,id`, projectID)
+	rows, err := tx.Query(ctx, `SELECT f.id::text,f.parent_id::text,f.name,f.kind,f.language,f.current_document_id::text,f.generation,
+    CASE WHEN a.document_id IS NULL THEN '' ELSE 'asset' END,coalesce(a.byte_size,0),coalesce(a.media_type,'')
+		FROM files f LEFT JOIN file_assets a ON a.document_id=f.current_document_id WHERE f.project_id=$1 AND f.tombstoned_at IS NULL ORDER BY f.name,f.id`, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +140,7 @@ func loadEntries(ctx context.Context, tx pgx.Tx, projectID string) (map[string]T
 		var item TreeEntry
 		var parent, language, document sql.NullString
 		var generation int64
-		if err := rows.Scan(&item.ID, &parent, &item.Name, &item.Kind, &language, &document, &generation); err != nil {
+		if err := rows.Scan(&item.ID, &parent, &item.Name, &item.Kind, &language, &document, &generation, &item.StorageKind, &item.ByteSize, &item.MediaType); err != nil {
 			return nil, err
 		}
 		item.ParentID = nullableString(parent)

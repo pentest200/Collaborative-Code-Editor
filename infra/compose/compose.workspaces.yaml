@@ -1,0 +1,29 @@
+# Explicit private development workspace mode. Managed user containers are on
+# Docker's bridge network; they never join application/control networks.
+services:
+  api:
+    environment:
+      WORKSPACE_INTERNAL_ORIGIN: http://workspaces:8090
+      WORKSPACE_INTERNAL_TOKEN: ${WORKSPACE_INTERNAL_TOKEN:?set a private workspace token}
+    networks: [public, private, workspace-control]
+  workspaces:
+    build:
+      context: ../..
+      dockerfile: services/workspaces/Dockerfile
+    environment:
+      WORKSPACE_INTERNAL_TOKEN: ${WORKSPACE_INTERNAL_TOKEN:?set a private workspace token}
+      WORKSPACE_IMAGE: ${WORKSPACE_IMAGE:?prebuild toolchains and set immutable image ID}
+      WORKSPACE_IDLE_TIMEOUT: ${WORKSPACE_IDLE_TIMEOUT:-15m}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - workspace-state:/state
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks: [workspace-control]
+networks:
+  workspace-control: {internal: true}
+volumes:
+  workspace-state: {}

@@ -88,8 +88,8 @@ export default function MonacoPreview({ userId, projectId, file, canEdit, onCurs
         if (cancelled || !host.current) return;
         monaco.current = library;
         bindingConstructor.current = Binding;
-        library.editor.defineTheme("cce-dark", { base: "vs-dark", inherit: true, rules: [], colors: { "editor.background": "#111720", "editor.foreground": "#e1e8f2", "editorLineNumber.foreground": "#65778d", "editorCursor.foreground": "#9bc2ff" } });
-        editor.current = library.editor.create(host.current, { theme: "cce-dark", readOnly: true, automaticLayout: true, minimap: { enabled: false }, scrollBeyondLastLine: false, fontSize: 14, lineHeight: 23, fontFamily: "Consolas, 'SFMono-Regular', monospace", ariaLabel: "Collaborative code editor" });
+        library.editor.defineTheme("cce-dark", { base: "vs-dark", inherit: true, rules: [], colors: { "editor.background": "#1f1f1f", "editor.foreground": "#cccccc", "editorLineNumber.foreground": "#858585", "editorCursor.foreground": "#ffffff", "editor.selectionBackground": "#264f78", "editor.lineHighlightBackground": "#242424" } });
+        editor.current = library.editor.create(host.current, { theme: "cce-dark", readOnly: true, automaticLayout: true, minimap: { enabled: false }, scrollBeyondLastLine: false, fontSize: 13, lineHeight: 21, padding: { top: 12 }, fontFamily: "'Cascadia Code', Consolas, 'SFMono-Regular', monospace", ariaLabel: "Collaborative code editor" });
         subscription = editor.current.onDidChangeCursorPosition((event) => cursorCallback.current(event.position.lineNumber, event.position.column));
         selectModel(); setReady(true);
       } catch { if (!cancelled) setError("The code editor could not load."); }

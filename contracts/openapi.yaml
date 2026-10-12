@@ -54,10 +54,11 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [github_enabled, execution_enabled]
+                required: [github_enabled, execution_enabled, workspace_enabled]
                 properties:
                   github_enabled: { type: boolean }
                   execution_enabled: { type: boolean, description: Explicitly configured restricted private-demo execution }
+                  workspace_enabled: { type: boolean, description: Explicitly configured private persistent development environments }
   /api/v1/auth/github/callback:
     get:
       tags: [identity]
@@ -66,6 +67,7 @@ paths:
       parameters:
         - { name: code, in: query, required: true, schema: { type: string } }
         - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: iss, in: query, required: false, schema: { type: string, enum: ["https://github.com/login/oauth"] }, description: Optional authorization-server issuer; incorrect or duplicate values are rejected. }
       responses:
         '302': { description: Authenticated redirect }
         '400': { $ref: '#/components/responses/Error' }
@@ -352,7 +354,7 @@ paths:
     get:
       tags: [checkpoints]
       x-implementation-phase: '06'
-      summary: Download verified captured UTF-8 text under current membership
+      summary: Download verified captured text or original file bytes under current membership
       security: [{ sessionCookie: [] }]
       parameters:
         - { $ref: '#/components/parameters/ProjectId' }
@@ -483,6 +485,133 @@ paths:
         '401': { description: Session required or expired }
         '404': { description: Project missing or membership removed }
         '503': { description: Database unavailable or query deadline exceeded }
+  /api/v1/projects/{project_id}/import:
+    post:
+      summary: Atomically import any file type and implied folders without overwriting
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+        - { name: X-CSRF-Token, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                parent_id: { type: [string, 'null'], format: uuid }
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items:
+                    type: object
+                    required: [path]
+                    oneOf:
+                      - { required: [text], not: { required: [data_base64] } }
+                      - { required: [data_base64], not: { required: [text] } }
+                    properties:
+                      path: { type: string, description: Relative path; folders inferred }
+                      text: { type: string, description: UTF-8 text up to 256 KiB; no NUL }
+                      data_base64: { type: string, contentEncoding: base64, description: Original bytes of any format up to 25 MiB; binary and large text files remain immutable assets }
+      responses:
+        '201': { description: All selected files created atomically as collaborative documents or immutable original-byte assets }
+        '400': { description: Invalid files or tree limits }
+        '403': { description: Editor permission or CSRF required }
+        '409': { description: Tree version, name or source quota conflict; no partial import }
+  /api/v1/projects/{project_id}/files/{file_id}/asset:
+    get:
+      summary: Download an original asset under current project and session access
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+        - { name: file_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: preview, in: query, required: false, schema: { type: string, enum: ['1'] }, description: Inline preview only for PNG/JPEG/GIF/WebP; other formats remain attachments }
+      responses:
+        '200': { description: Checksum-verified original bytes; no-store, nosniff, sandbox CSP and safe Content-Disposition filename }
+        '404': { description: File not found or membership absent }
+  /api/v1/projects/{project_id}/workspace:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      summary: Read development environment configuration and last task logs
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { description: Environment state/configuration/checkpoint/task/terminal count }
+        '503': { description: Private workspaces unavailable }
+    put:
+      summary: Create/start/save configuration or stop the environment
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, language, root, entrypoint]
+              properties:
+                action: { type: string, enum: [start, stop] }
+                language: { type: string, enum: [python, node, typescript, cpp, java, go] }
+                root: { type: string, description: Relative project folder or . }
+                entrypoint: { type: string, description: Relative source file or Java main class; Go also accepts . }
+      responses:
+        '200': { description: Editor-authorized lifecycle action applied }
+        '409': { description: Configuration change blocked by active task or terminals }
+    delete:
+      summary: Owner-only deletion of environment and its volume; retain collaborative source
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Environment storage removed }
+        '403': { description: Owner permission required }
+        '409': { description: Active task or terminals must close first }
+  /api/v1/projects/{project_id}/workspace/sync:
+    post:
+      summary: Replace workspace working source with a verified ready checkpoint
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [checkpoint_id]
+              properties:
+                checkpoint_id: { type: string, format: uuid }
+      responses:
+        '200': { description: Working source replaced; retained dependencies and home preserved }
+        '409': { description: Checkpoint not ready or task/terminal active }
+  /api/v1/projects/{project_id}/workspace/tasks:
+    post:
+      summary: Start one bounded install/build/run task in the configured workspace
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [install, build, run] }
+      responses:
+        '202': { description: Task started; status/logs available through workspace GET }
+        '409': { description: Task/terminal already active or source not synced }
+  /ws/workspaces/{project_id}/terminal:
+    get:
+      summary: Independent bounded PTY shell with two-second session/editor revalidation
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectId' }
+      responses:
+        '101': { description: Binary shell output/text shell input WebSocket; strict Origin required }
+        '403': { description: Editor permission or allowed Origin required }
+        '409': { description: Environment/terminal unavailable }
 components:
   securitySchemes:
     sessionCookie: { type: apiKey, in: cookie, name: cce_session }
@@ -554,6 +683,9 @@ components:
       additionalProperties: false
       required: [id, parent_id, name, kind, language, document_id, generation]
       properties:
+        storage_kind: { type: string, enum: [asset], description: Present only for original-byte assets; absent for collaborative text }
+        byte_size: { type: integer, minimum: 0, maximum: 26214400 }
+        media_type: { type: string, description: Server-detected content type for assets }
         id: { type: string, format: uuid }
         parent_id: { type: [string, 'null'], format: uuid }
         name: { type: string, minLength: 1, maxLength: 255 }

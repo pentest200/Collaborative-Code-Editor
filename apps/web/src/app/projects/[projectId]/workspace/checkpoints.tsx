@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 type Checkpoint = { id: string; name: string; state: "captured" | "materializing" | "ready" | "failed"; created_at: string; failure_code: string | null };
-type Manifest = { captured_tree_version: string; files: { file_id: string; path: string; through_sequence: string; checksum: string; text_bytes: number }[] };
+type Manifest = { captured_tree_version: string; files: { file_id: string; path: string; through_sequence: string; checksum: string; text_bytes: number; asset?: boolean }[] };
 
 export default function Checkpoints({ projectId, role, csrf, treeVersion, onRestore, onClose }: {
   projectId: string; role: "owner" | "editor" | "viewer"; csrf: string; treeVersion: string;
@@ -75,6 +75,6 @@ export default function Checkpoints({ projectId, role, csrf, treeVersion, onRest
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     <ul>{list.map((cp) => <li key={cp.id}><strong>{cp.name}</strong><span>{cp.state}</span>{cp.state === "ready" && <button type="button" disabled={busy} onClick={() => void preview(cp)} aria-label={`Preview ${cp.name}`}>Preview</button>}{cp.state === "failed" && <><p>Materialization failed. The captured cut remains retained.</p>{role !== "viewer" && <button type="button" disabled={busy} onClick={() => void mutate(`${base}/${cp.id}/retry`)}>Retry materialization</button>}</>}</li>)}</ul>
     {!list.length && <p>No checkpoints yet.</p>}
-    {manifest && selected && <section aria-label="Checkpoint preview"><h3>{selected.name}</h3><p>Captured tree version {manifest.captured_tree_version}</p>{manifest.files.map((file) => <div key={file.file_id}><button type="button" disabled={busy} onClick={() => void showFile(file.file_id)} aria-label={`Preview file ${file.path}`}>{file.path}</button><span> · sequence {file.through_sequence}</span><a href={`${base}/${selected.id}/files/${file.file_id}`} download>Download</a></div>)}<section aria-label="Captured file text"><pre>{text}</pre></section>{role === "owner" && <button type="button" disabled={busy} onClick={() => { if (window.confirm(`Restore ${selected.name}? The current committed state will be preserved as another checkpoint. Local drafts from the replaced version will remain separate.`)) void mutate(`${base}/${selected.id}/restore`, undefined, true); }}>Restore checkpoint</button>}</section>}
+    {manifest && selected && <section aria-label="Checkpoint preview"><h3>{selected.name}</h3><p>Captured tree version {manifest.captured_tree_version}</p>{manifest.files.map((file) => <div key={file.file_id}><button type="button" disabled={busy || file.asset} onClick={() => void showFile(file.file_id)} aria-label={`Preview file ${file.path}`}>{file.path}</button><span> · sequence {file.through_sequence}</span><a href={`${base}/${selected.id}/files/${file.file_id}`} download>Download</a></div>)}<section aria-label="Captured file text"><pre>{text}</pre></section>{role === "owner" && <button type="button" disabled={busy} onClick={() => { if (window.confirm(`Restore ${selected.name}? The current committed state will be preserved as another checkpoint. Local drafts from the replaced version will remain separate.`)) void mutate(`${base}/${selected.id}/restore`, undefined, true); }}>Restore checkpoint</button>}</section>}
   </aside>;
 }

@@ -106,7 +106,7 @@ func (b *testBrowser) login(t *testing.T, provider *fakeProvider, origin string)
 	}
 	code := strconv.FormatInt(b.providerID, 10)
 	provider.expect(code, u.Query().Get("code_challenge"))
-	callback := "/api/v1/auth/github/callback?state=" + url.QueryEscape(u.Query().Get("state")) + "&code=" + code
+	callback := "/api/v1/auth/github/callback?state=" + url.QueryEscape(u.Query().Get("state")) + "&code=" + code + "&iss=" + url.QueryEscape(githubOAuthIssuer)
 	callbackResponse := b.request(t, "GET", callback, nil, "", "")
 	foundSessionCookie := false
 	for _, cookie := range callbackResponse.Cookies() {
@@ -290,6 +290,15 @@ func TestPhase01Integration(t *testing.T) {
 	code := strconv.FormatInt(replay.providerID, 10)
 	provider.expect(code, location.Query().Get("code_challenge"))
 	path := "/api/v1/auth/github/callback?state=" + state + "&code=" + code
+	// Issuer/shape denials must not consume the bound state or call the provider.
+	for _, suffix := range []string{
+		"&iss=" + url.QueryEscape("https://attacker.example"),
+		"&iss=" + url.QueryEscape(githubOAuthIssuer+"/"),
+		"&iss=" + url.QueryEscape(githubOAuthIssuer) + "&iss=" + url.QueryEscape(githubOAuthIssuer),
+		"&unexpected=value",
+	} {
+		responseJSON(t, replay.request(t, "GET", path+suffix, nil, "", ""), 400, nil)
+	}
 	responseJSON(t, replay.request(t, "GET", path, nil, "", ""), 302, nil)
 	responseJSON(t, replay.request(t, "GET", path, nil, "", ""), 400, nil)
 	staleFlow := newBrowser(api.URL)

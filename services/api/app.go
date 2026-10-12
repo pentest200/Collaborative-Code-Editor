@@ -45,6 +45,8 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/projects/{project_id}/tree", a.getTree)
 	mux.HandleFunc("GET /api/v1/projects/{project_id}/search", a.searchProject)
 	mux.HandleFunc("POST /api/v1/projects/{project_id}/tree", a.createTreeEntry)
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/import", a.importFiles)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/files/{file_id}/asset", a.downloadAsset)
 	mux.HandleFunc("PATCH /api/v1/projects/{project_id}/tree/{file_id}", a.updateTreeEntry)
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/tree/{file_id}", a.deleteTreeEntry)
 	mux.HandleFunc("GET /ws/documents/{document_id}", a.documentSocket)
@@ -59,6 +61,12 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/projects/{project_id}/runs/{run_id}", a.getRun)
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/runs/{run_id}", a.cancelRun)
 	mux.HandleFunc("GET /api/v1/projects/{project_id}/runs/{run_id}/events", a.runEvents)
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/workspace", a.workspaceProxy)
+	mux.HandleFunc("PUT /api/v1/projects/{project_id}/workspace", a.workspaceProxy)
+	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/workspace", a.workspaceProxy)
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/workspace/sync", a.workspaceSync)
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/workspace/tasks", a.workspaceProxy)
+	mux.HandleFunc("GET /ws/workspaces/{project_id}/terminal", a.workspaceTerminal)
 	return a.observed(mux)
 }
 
@@ -67,7 +75,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a *App) authConfig(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, 200, map[string]bool{"github_enabled": a.cfg.ClientID != "", "execution_enabled": a.cfg.RunnerToken != ""})
+	writeJSON(w, 200, map[string]bool{"github_enabled": a.cfg.ClientID != "", "execution_enabled": a.cfg.RunnerToken != "", "workspace_enabled": a.cfg.WorkspaceToken != ""})
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

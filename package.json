@@ -17,6 +17,8 @@
     "test": "npm run test --workspaces --if-present",
     "check:contracts": "node scripts/check-contracts.mjs",
     "test:workspace": "node --test tests/e2e/workspace.test.mjs",
+    "test:workbench": "node --test tests/e2e/workbench.test.mjs",
+    "test:file-assets": "node --test tests/integration/file-assets.test.mjs",
     "test:realtime": "node --test tests/e2e/realtime.test.mjs",
     "test:recovery": "node --test tests/e2e/recovery.test.mjs",
     "test:checkpoints": "node --test tests/e2e/checkpoints.test.mjs",

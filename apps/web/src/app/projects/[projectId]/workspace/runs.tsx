@@ -5,7 +5,7 @@ import { flushProject } from "@/collaboration/run-input";
 type File = { id: string; name: string; parent_id: string | null; kind: string };
 type Run = { id: string; checkpoint_id: string; runtime: string; entrypoint: string; state: string; event_sequence: string; exit_code: number | null; failure_code: string | null; truncated: boolean };
 const terminal = (state: string) => ["succeeded", "failed", "timed_out", "cancelled"].includes(state);
-export default function Runs({ projectID, userID, csrf, canEdit, files, open, onBusy, onStart }: { projectID: string; userID: string; csrf: string; canEdit: boolean; files: File[]; open: boolean; onBusy: (busy: boolean) => void; onStart: () => void }) {
+export default function Runs({ projectID, userID, csrf, canEdit, files, open, onBusy, onStart, onWorkspace }: { projectID: string; userID: string; csrf: string; canEdit: boolean; files: File[]; open: boolean; onBusy: (busy: boolean) => void; onStart: () => void; onWorkspace?: () => void }) {
   const [runtime, setRuntime] = useState("python"); const [entrypoint, setEntrypoint] = useState(""); const [stdin, setStdin] = useState("");
   const [run, setRun] = useState<Run | null>(null); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
   const request = useRef<{ key: string; body: string } | null>(null);
@@ -63,6 +63,7 @@ export default function Runs({ projectID, userID, csrf, canEdit, files, open, on
       <div className="run-control"><label htmlFor="run-stdin">Stdin</label><textarea id="run-stdin" value={stdin} onChange={(event) => setStdin(event.target.value)} maxLength={16384} disabled={busy} /></div>
       <button type="submit" disabled={busy || Boolean(run && !terminal(run.state))}>Run captured source</button></form>}
     {run && <><p>Input checkpoint <code>{run.checkpoint_id}</code> · {run.runtime} · {run.entrypoint} · {run.exit_code === null ? run.state : `Exit ${run.exit_code}`} {run.failure_code && `· ${run.failure_code}`}</p>{canEdit && !terminal(run.state) && <button type="button" onClick={() => void cancel()}>Cancel run</button>}{run.truncated && <p role="status">Output truncated at 64 KiB; execution stopped.</p>}<section aria-label="Run output"><pre>{output}</pre></section></>}
+    {onWorkspace && <p>This captured-source runner has Python’s standard library and built-in Node modules. For installed packages and other languages, use <button type="button" onClick={onWorkspace}>Open development workspace</button> and Run workspace.</p>}
     <p>Restricted private demo · 5 seconds · 128 MiB · no network. Run waits for your edits to save, then captures committed source. Recoverable drafts from replaced versions stay separate.</p>{error && <p role="alert">{error}</p>}
   </section>;
 }

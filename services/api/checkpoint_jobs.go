@@ -73,18 +73,34 @@ func (a *App) materializeCheckpoint(ctx context.Context, project, id string, att
 		return errors.New("artifact storage unavailable")
 	}
 	total := 0
+	assetTotal := 0
 	for i := range manifest.Files {
 		file := &manifest.Files[i]
 		var output struct {
 			Text string `json:"text"`
 		}
-		if err = a.internalCheckpoint(ctx, "materialize", map[string]string{"project_id": project, "checkpoint_id": id, "file_id": file.FileID}, &output); err != nil {
-			return err
-		}
-		data := []byte(output.Text)
-		total += len(data)
-		if len(data) > 262144 || total > 10<<20 {
-			return errors.New("captured source limit exceeded")
+		var data []byte
+		if file.Asset {
+			var expected []byte
+			if err = a.db.QueryRow(ctx, `SELECT data,checksum FROM file_assets WHERE document_id=$1`, file.DocumentID).Scan(&data, &expected); err != nil {
+				return err
+			}
+			if checksum(data) != hex.EncodeToString(expected) {
+				return errCheckpointCorrupt
+			}
+			assetTotal += len(data)
+			if len(data) > maxAssetBytes || assetTotal > maxProjectAssetBytes {
+				return errors.New("captured asset limit exceeded")
+			}
+		} else {
+			if err = a.internalCheckpoint(ctx, "materialize", map[string]string{"project_id": project, "checkpoint_id": id, "file_id": file.FileID}, &output); err != nil {
+				return err
+			}
+			data = []byte(output.Text)
+			total += len(data)
+			if len(data) > 262144 || total > 10<<20 {
+				return errors.New("captured source limit exceeded")
+			}
 		}
 		file.ArtifactKey = checkpointKey(project, id, file.FileID)
 		file.Checksum = checksum(data)

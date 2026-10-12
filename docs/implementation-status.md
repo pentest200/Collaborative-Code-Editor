@@ -1,11 +1,11 @@
 # Implementation status — Phase 09
 
-Updated 8 October 2026 (Asia/Calcutta). PROJECT_SPEC.md remains authoritative. Required Phases 00–09 have implemented functionality and current bounded local acceptance recorded at the end of this document. Historical evidence and the earlier 8 October gated continuation review are preserved below. This task prepares the local portfolio demo, fixes required-phase setup/test/documentation defects, and does not implement Phase 10. Live GitHub authorization initiation is verified with configured credentials; manual authentication/callback/session/logout remains pending, so the complete local portfolio demo is not yet verified.
+Updated 8 October 2026 (Asia/Calcutta). PROJECT_SPEC.md remains authoritative. Required Phases 00–09 have implemented functionality and current bounded local acceptance recorded at the end of this document. Historical evidence and the earlier 8 October gated continuation review are preserved below. This task prepares the local portfolio demo, fixes required-phase setup/test/documentation defects, and does not implement Phase 10. Live GitHub sign-in is user-confirmed after the issuer compatibility fix; automated live session/protected-read/logout acceptance remains pending, separately from historical results.
 
 | Area | Implementation | Verification / remaining gate |
 |---|---|---|
 | Phase 00 monorepo and contracts | Implemented | Existing pinned workspaces/toolchains/migrations preserved. Go/TS framing now uses the specified eight frame types; temporary Phase 03 type 9 removed. Shared ACK/committed-update fixtures pass. |
-| Phase 01 identity and access | Implemented | OAuth fixture, sessions/CSRF, roles/invites and real PostgreSQL API regressions pass. Current credentials are configured and real authorization redirect/state/PKCE is verified; live callback/session/logout is still pending. Earlier provider-fixture evidence remains separate. |
+| Phase 01 identity and access | Implemented | OAuth fixture, sessions/CSRF, roles/invites and real PostgreSQL API regressions pass. Live GitHub sign-in is user-confirmed after the issuer fix; automated live session/logout acceptance remains pending. Provider-fixture evidence remains separate. |
 | Phase 02 tree and workspace | Implemented | Existing metadata/tree API regressions pass. File creation now records a same-document snapshot pointer atomically. Semantic tab/role/narrow-screen browser regression passes; Monaco resize overflow is bounded. |
 | Phase 03 gateway, rooms and provider | Implemented | Gateway Origin/session/generation checks, raw viewer denial, two-second read revalidation, ordered project-event replay/resync and stable room identity survive Phase 04 integration. Browser convergence now uses distinct owner/editor accounts; earlier editing contexts shared one owner account. |
 | Phase 04 durable appends and receipts | Implemented and integration tested | Canonical 0004 migration, scoped SQL functions, restricted worker login, contiguous bigint counter, actor/hash/identity deduplication, current session/role/generation/head/fence checks, 1 GiB retained-update payload quota and independent 10 MiB active-source quota. Candidate UTF-8 size is committed atomically as a scalar projection; cross-file accounting and deletion releasing source budget are tested. No direct worker table writes or session-token reads. Database commit precedes encoded authoritative-state replacement, peer update and ACK. |
@@ -19,7 +19,7 @@ Updated 8 October 2026 (Asia/Calcutta). PROJECT_SPEC.md remains authoritative. R
 | Phase 06 preview/restore/drafts | Implemented and browser/integration tested | Current-membership/scope checked list/manifest/download, owner-only verified preparation, atomic latest previous-state capture and fresh document generations/tree events, rollback and edit/delete race tests, workspace panel and real connected/offline generation recovery. Previous-state preview waits for independent successful materialization. |
 | Phase 07 immutable runs and restricted agent | Implemented and integration/browser tested | Receipt-draining Run UI, captured checkpoint jobs, separate authenticated control listener/agent, pinned fixed runtimes, enforced quotas/timeouts/cancellation, authorized sequenced output. Real runtime/resource/crash and UI cut/receipt/output-reconnect acceptance passed; platform and release limits remain below. |
 | Phase 08 search and authorization/race review | Implemented; verification recorded below | Committed-cut PostgreSQL projections, durable coalesced tasks, scoped literal queries, version/freshness UI, session/invite expiry across lock waits. See the final Phase 08 gate below. |
-| Phase 09 observability, measured review and demonstration | Implemented; bounded verification recorded below | Manual OTel, private metrics/collector/Prometheus/Grafana, seeded workload and browser samples, redaction, actual jobs death, backup drill, documentation and claims ledger. Current bounded local acceptance passes; portfolio login verification remains blocked on manual live OAuth completion. No production/public-sandbox or sustained-capacity claim. |
+| Phase 09 observability, measured review and demonstration | Implemented; bounded verification recorded below | Manual OTel, private metrics/collector/Prometheus/Grafana, seeded workload and browser samples, redaction, actual jobs death, backup drill, documentation and claims ledger. Current bounded local acceptance passes; live GitHub sign-in is user-confirmed, with automated live session/logout acceptance pending. No production/public-sandbox or sustained-capacity claim. |
 | Phase 10 optional scaling services | Not started; prerequisites blocked | Requires a verified portfolio release and a selected extension. Live GitHub OAuth remains unverified; no multi-worker/Kafka/OpenSearch/Kubernetes extension was selected. See the 8 October continuation review below. |
 
 ## Checks executed in Phase 05
@@ -399,3 +399,150 @@ Final API configuration and all four scrape targets validate, and the configured
 secret scan passed again after these restarts. [Current readiness](measurements/local-demo-20261008/readiness.json)
 records functional/private success and complete-portfolio/live-OAuth verification
 as false. The authoritative spec and October 6 reports/screenshots are unchanged.
+
+## OAuth callback issuer compatibility fix — 8 October 2026
+
+The user reported `OAUTH_INVALID` after the normal GitHub login flow and supplied
+only the callback parameter names: `code`, `iss`, `state`. The exact trigger was
+the callback handler's two-key-only check, which rejected the additional issuer
+before reading browser binding or exchanging the authorization code. This is a
+confirmed implementation defect, distinct from the earlier incomplete manual
+OAuth acceptance; no authorization code, state, cookie or credential was requested.
+
+GitHub's [discovery documentation](https://docs.github.com/en/apps/github-authentication-discovery-endpoints)
+and its published authorization-server metadata identify the issuer as
+`https://github.com/login/oauth` and advertise issuer response support. The Go
+handler now accepts optional RFC 9207 `iss` only once and only for that exact
+fixed issuer. It never uses callback input to select provider endpoints. Unknown
+keys, duplicate code/state/issuer, malformed encoding, empty/wrong issuer and
+existing code/state bounds remain rejected. Browser binding, one-use expiry and
+PKCE are unchanged; two-parameter legacy responses remain supported.
+
+- New twelve-case issuer/shape unit regression: **passed** on Windows,
+  `go test -run '^TestOAuthCallbackIssuerValidation$' -count=1`, 5.642s.
+- Full real Linux API `go test -v ./... -count=1`,
+  `go test -v -race ./... -count=1`, `go vet ./...`: **all passed**, no skips;
+  API normal/race **13.109 / 14.913s**. All fixture login flows now exercise the
+  issuer-bearing callback and produce valid application sessions. Additional real
+  database cases reject wrong/duplicate issuer and unknown fields without consuming
+  the bound state; subsequent legacy login succeeds, followed by replay denial.
+  Used the same private-network repository/cache-mounted `golang:1.27.1-bookworm`
+  command recorded above, limiting this run to API checks. Jobs/runner were stopped
+  during queue tests and restored afterward. Runner source is unchanged.
+- Rebuilt only local API/jobs using the existing test/private/observability Compose
+  configuration: **passed**, both healthy; existing data/volumes and `.env` retained.
+- Authorization contract/README describe issuer validation. Interactive OAuth
+  evidence now records only issuer-presence/match booleans, never query values.
+  Syntax and `git -c core.autocrlf=false diff --check` passed. No schema change,
+  optional Phase 10 work, commit, push, deployment or public exposure.
+
+The user retried a fresh homepage login against the fixed API and reported
+**"Signed in successfully."** Live GitHub login is therefore **user-confirmed**
+after this fix. This is distinct from fixture regression evidence and the earlier
+automated interactive test timeout. The automated live session/protected-read/
+logout acceptance has not yet completed successfully; do not mark that historical
+test as passed or infer production readiness. All other recorded operational/
+platform limits remain.
+
+## Private development workspace extension — 13 October 2026
+
+Implemented the user-requested steps 1–5: atomic local file/folder import;
+project environment create/start/stop/delete and persisted storage/configuration;
+Python, Node/TypeScript, C++, Java and Go toolchains; dependency/build/run controls
+with bounded status/logs; independent browser terminal sessions. Configuration is
+opt-in through `scripts/start-workspaces.ps1` / `local-demo.ps1 -Workspaces`.
+The running local stack includes the private workspace agent and new frontend.
+The existing restricted immutable runner remains separately available.
+
+Bounded acceptance:
+- Core real-stack integration: **7 subtests passed** (198.66 seconds), covering
+  exact imported Yjs text including Unicode/CRLF/empty files, rollback on conflicts,
+  traversal/NUL rejection, roles, CPU PyTorch and NumPy installation/tensor run,
+  npm dependency use, TypeScript/C++/Java/Go compilation and execution, a Java Maven
+  library, persistent installed dependencies/files, actual browser file/folder
+  import and secret exclusion, independent teammate PTYs, revocation and owner-only
+  environment deletion retaining collaborative source.
+- Separate actual idle stop and manager restart recovery check: **passed**
+  (38.32 seconds on the final image), using a UUID-scoped isolated agent and accelerated one-second
+  idle setting with the real 30-second sweep. Status polling did not prevent stop;
+  newly created terminal pip resolves to the project virtual environment.
+- API/agent Go unit regressions: **passed**. Linux agent `go test -race`: **passed**.
+  Frontend typecheck/build and OpenAPI parsing: **passed**. Frontend lint succeeds
+  with three existing specificity warnings in the user's stylesheet. Desktop
+  browser terminal screenshot was inspected under `.tmp/workspace-acceptance`.
+
+Failed initial attempts are not passes: source ownership publication needed a
+networkless volume helper rather than adding capabilities to user containers;
+Go execution needed a project-volume GOTMPDIR because scratch is non-executable;
+the revocation assertion now accepts the workspace access gate as well as shell
+disconnect. The isolated restart harness initially reused an ephemeral host port;
+it initially resolved the assigned port again after restart. The final isolated
+check uses a normal Python HTTP client in the agent's private network namespace,
+avoiding Windows/Node host-port startup hangs and premature raw-client connection
+closure. A combined run's core checks passed while the earlier harness failed;
+the corrected idle/restart check passed separately. Test-only agents/volumes were
+removed after validation.
+
+Step 6 (language servers, breakpoint debugging and application previews) remains
+subsequent work, as requested. No Phase 10 scaling services were implemented.
+Workspace network/disk/terminal-source synchronization and runtime compatibility
+limits are recorded in [development workspaces](development-workspaces.md).
+No production/public sandbox or capacity claim is added.
+
+## IDE workbench UI refresh — 13 October 2026
+
+Replaced the previous stacked development section with a bounded editor workbench:
+activity bar, compact Explorer/import toolbar, neutral dark theme and system
+typefaces, file tabs/breadcrumbs, keyboard/pointer-resizable sidebar and bottom
+panel, and separate Environment/Task output/Terminal views. Settings/help and
+destructive environment deletion are separated from normal task controls. Import
+and metadata actions use focus-managed dialogs. Hiding the panel and switching
+views retain shell sessions; explicitly closing a shell terminates it. Mobile
+uses a collapsible drawer and independently scrolling settings.
+
+Current checks: frontend production builds/typecheck pass; workspace regression
+passes create/rename/move/delete, viewer restrictions and one editor instance.
+Real-stack workbench acceptance passes saved code display, configuration/sync/run,
+task output, terminal persistence across views/panel hiding, keyboard resizing,
+import/new folder, modal focus and viewer restrictions. Pane bounds and screenshots
+were checked at 1920×1080, 1440×900, 1024×768 and 390×844, including the project
+screen. The focused regression is `CCE_WORKSPACE_TESTS=1 npm run test:workbench`;
+it uses isolated fixtures and the private local stack. UI lint has no errors;
+CSS descending-specificity warnings remain advisory. These checks do not add
+language servers, debugging, previews or production execution guarantees.
+
+Verified screenshots: [environment](screenshots/workbench-environment.png) and
+[terminal](screenshots/workbench-terminal.png). The updated frontend is running
+at localhost:3000 and returns HTTP 200. The existing workspace regression completed
+with 1 passed, 0 skipped (5.65 seconds); the final real-stack workbench review
+reported no browser exceptions and confirmed that editor, panel and status-bar
+bounds do not overlap at desktop/laptop/mobile sizes.
+The saved `test:workbench` regression also passed with 1 passed, 0 skipped
+(22.91 seconds), including live shell persistence and modal/viewer checks.
+
+## All-format file import — 13 October 2026
+
+Removed the UTF-8-only and generated-folder filters from local import. Any
+extension is accepted. Small UTF-8 files remain collaborative documents; binary,
+non-UTF-8 and larger files are immutable original-byte asset generations with
+scoped downloads, raster image preview, checkpoint materialization/restoration,
+and development workspace sync. Asset documents are denied collaboration socket
+admission and database update insertion. Migration `0009_file_assets` is applied;
+API, checkpoint worker, workspace agent and frontend were rebuilt together.
+
+Limits: 25 MiB per file, 100 MiB per import/active project assets, existing
+10 MiB editable source and 200-entry/path/depth limits. Asset data/generations
+remain retained without pruning. The legacy captured runner returns
+WORKSPACE_REQUIRED for asset projects, directing users to Run workspace.
+
+Verification: final all-format real-stack acceptance passed (25.02 seconds) for
+PNG/PDF/ZIP/EXE/WASM/arbitrary binary/UTF-16/large text/empty bytes, exact original
+downloads, viewer/outsider controls, rollback on conflict, checkpoints, deletion
+and restoration to fresh generations, byte-exact workspace staging and execution
+reading an archive, browser image preview and binary/large text imports, and
+node_modules folder import, and collaboration socket rejection for assets.
+Existing Go API/PostgreSQL integration regressions
+passed in Linux (16.19 seconds), plus native Go unit checks, frontend build/typecheck
+and OpenAPI parsing. Checkpoint jobs and the restricted runner were resumed after
+their isolated database regression gate. No public execution or format-specific
+editing/preview claim is inferred from import support.

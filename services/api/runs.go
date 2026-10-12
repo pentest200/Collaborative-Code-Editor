@@ -155,6 +155,15 @@ func (a *App) createRun(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 429, "RUN_QUOTA", "One active run per user and project is allowed")
 		return
 	}
+	var hasAssets bool
+	if err = tx.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM files f JOIN file_assets a ON a.document_id=f.current_document_id WHERE f.project_id=$1 AND f.tombstoned_at IS NULL)`, project).Scan(&hasAssets); err != nil {
+		treeDBError(w, err)
+		return
+	}
+	if hasAssets {
+		writeError(w, 409, "WORKSPACE_REQUIRED", "This project includes binary or large files. Use Run workspace in the development environment.")
+		return
+	}
 	var exists bool
 	err = tx.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM files WHERE project_id=$1 AND tombstoned_at IS NULL AND kind='file')`, project).Scan(&exists)
 	if err != nil || !exists {

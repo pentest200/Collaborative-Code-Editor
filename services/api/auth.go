@@ -20,6 +20,24 @@ import (
 
 const sessionCookieName = "cce_session"
 const oauthCookieName = "cce_oauth_flow"
+const githubOAuthIssuer = "https://github.com/login/oauth"
+
+// GitHub can include RFC 9207's issuer identifier in its authorization response.
+// Validate it against the fixed provider, never use it to choose an endpoint.
+func validOAuthCallback(query url.Values) bool {
+	for key := range query {
+		if key != "state" && key != "code" && key != "iss" {
+			return false
+		}
+	}
+	if len(query["state"]) != 1 || len(query["code"]) != 1 || len(query.Get("state")) != 43 || len(query.Get("code")) < 1 || len(query.Get("code")) > 1024 {
+		return false
+	}
+	if issuer, present := query["iss"]; present {
+		return len(issuer) == 1 && issuer[0] == githubOAuthIssuer
+	}
+	return true // Retain compatibility with responses without the optional issuer.
+}
 
 type Session struct {
 	ID          string
@@ -59,7 +77,7 @@ func (a *App) oauthStart(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	query, parseError := url.ParseQuery(r.URL.RawQuery)
-	if parseError != nil || len(query) != 2 || len(query["state"]) != 1 || len(query["code"]) != 1 || len(query.Get("state")) != 43 || len(query.Get("code")) < 1 || len(query.Get("code")) > 1024 {
+	if parseError != nil || !validOAuthCallback(query) {
 		writeError(w, 400, "OAUTH_INVALID", "Invalid login callback")
 		return
 	}

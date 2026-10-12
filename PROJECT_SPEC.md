@@ -920,3 +920,24 @@ design choices for this project.
 Start by saving this guide as `PROJECT_SPEC.md` in the new source repository and
 running the master prompt. Continue through the verified collaboration release
 before extending the infrastructure.
+
+## Authorized development workspace extension — 13 October 2026
+
+The user requested file/folder import, a persistent workspace manager, Python,
+Node/TypeScript, C++, Java and Go toolchains, dependency/build controls, and
+independent teammate terminals, followed afterward by language servers/debugging/
+previews. This is a separately opted-in private local development workflow;
+the earlier immutable restricted runner retains its contracts and limits.
+Workspace package installation/network access/interactive shells are explicitly
+allowed for this extension. Collaborative committed source stays authoritative;
+sync uses a verified checkpoint and explicitly replaces the terminal working copy.
+No terminal operation automatically overwrites a collaborative document.
+See [workspace contract and limitations](docs/development-workspaces.md).
+This extension does not implement Phase 10's optional scaling infrastructure.
+
+The user subsequently authorized all-format file import. Small UTF-8 files retain
+Yjs editing; binary/non-UTF-8/large files retain exact immutable original bytes,
+with scoped downloads, image previews, checkpoint/restore and workspace sync.
+Limits are 25 MiB/file, 100 MiB/import and active assets/project, with existing
+editable source, tree/depth/path limits preserved. Asset documents cannot accept
+collaboration updates; the older restricted runner stays text-only.

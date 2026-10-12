@@ -2,6 +2,7 @@ param(
     [ValidateSet('Base', 'Private')][string]$Mode = 'Base',
     [switch]$TestPorts,
     [switch]$Observability,
+    [switch]$Workspaces,
     [switch]$EnvironmentOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -49,6 +50,10 @@ try {
     docker info --format '{{.ServerVersion}}' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Start Docker Desktop in Linux-container mode, then retry' }
     Write-Host 'Docker is available; preparing local configuration.'
+    if ($Workspaces) {
+        if (!$env:WORKSPACE_INTERNAL_TOKEN) { $env:WORKSPACE_INTERNAL_TOKEN = Get-DemoRandomToken }
+        Resolve-DemoImage 'WORKSPACE_IMAGE' 'cce-workspace-toolchains:local' 'services/workspaces/Toolchains.Dockerfile'
+    }
     if ($Mode -eq 'Private') {
         if (!$env:RUNNER_INTERNAL_TOKEN) { $env:RUNNER_INTERNAL_TOKEN = Get-DemoRandomToken }
         if ($env:RUNNER_INTERNAL_TOKEN.Length -lt 32) { throw 'Private runner token must contain at least 32 characters' }
@@ -59,7 +64,7 @@ try {
         $env:GRAFANA_ADMIN_PASSWORD = Get-DemoContainerSetting 'collaborative-code-editor-grafana-1' 'GF_SECURITY_ADMIN_PASSWORD'
         if (!$env:GRAFANA_ADMIN_PASSWORD) { $env:GRAFANA_ADMIN_PASSWORD = Get-DemoRandomToken }
     }
-    $runtimeKeys = @('RUNNER_INTERNAL_TOKEN', 'RUNNER_PYTHON_IMAGE', 'RUNNER_JAVASCRIPT_IMAGE', 'GRAFANA_ADMIN_PASSWORD')
+    $runtimeKeys = @('RUNNER_INTERNAL_TOKEN', 'RUNNER_PYTHON_IMAGE', 'RUNNER_JAVASCRIPT_IMAGE', 'GRAFANA_ADMIN_PASSWORD', 'WORKSPACE_INTERNAL_TOKEN', 'WORKSPACE_IMAGE')
     $runtimeLines = foreach ($key in $runtimeKeys) { $value = [Environment]::GetEnvironmentVariable($key, 'Process'); if ($value) { "$key=$value" } }
     if ($runtimeLines) { [IO.File]::WriteAllText((Join-Path $demoRoot '.env.demo.local'), ($runtimeLines -join "`n") + "`n", (New-Object Text.UTF8Encoding($false))) }
     Write-Host 'Local runtime settings prepared; credential values are not displayed.'
@@ -69,6 +74,7 @@ try {
     $composeArgs += @('-f', 'infra/compose/compose.yaml')
     if ($TestPorts) { $composeArgs += @('-f', 'infra/compose/compose.test.yaml') }
     if ($Mode -eq 'Private') { $composeArgs += @('-f', 'infra/compose/compose.runner.yaml') }
+    if ($Workspaces) { $composeArgs += @('-f', 'infra/compose/compose.workspaces.yaml') }
     if ($Observability) {
         $composeArgs += @('-f', 'infra/compose/compose.observability.yaml')
         if ($Mode -eq 'Private') { $composeArgs += @('-f', 'infra/compose/compose.observability-runner.yaml') }

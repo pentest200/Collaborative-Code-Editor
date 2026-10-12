@@ -72,6 +72,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second,
 		MaxHeaderBytes: 16 << 10,
 	}
+	go app.runWorkspaceJanitor(serviceCtx)
 	slog.Info("api listening")
 	go func() {
 		<-serviceCtx.Done()

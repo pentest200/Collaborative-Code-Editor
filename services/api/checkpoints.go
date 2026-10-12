@@ -31,6 +31,7 @@ type Checkpoint struct {
 	Failure     *string   `json:"failure_code"`
 }
 type CheckpointFile struct {
+	Asset            bool    `json:"asset,omitempty"`
 	FileID           string  `json:"file_id"`
 	Path             string  `json:"path"`
 	Language         *string `json:"language"`
@@ -195,14 +196,14 @@ func loadCheckpoint(ctx context.Context, tx pgx.Tx, project, id string) (Checkpo
 	if err = json.Unmarshal(tree, &manifest.Tree); err != nil {
 		return cp, manifest, nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT file_id::text,path,language,document_id::text,through_sequence::text,snapshot_id::text,snapshot_sequence::text,encode(snapshot_checksum,'hex'),coalesce(artifact_key,''),coalesce(encode(checksum,'hex'),''),coalesce(text_bytes,0) FROM checkpoint_files WHERE checkpoint_id=$1 ORDER BY file_id`, id)
+	rows, err := tx.Query(ctx, `SELECT f.file_id::text,f.path,f.language,f.document_id::text,f.through_sequence::text,f.snapshot_id::text,f.snapshot_sequence::text,encode(f.snapshot_checksum,'hex'),coalesce(f.artifact_key,''),coalesce(encode(f.checksum,'hex'),''),coalesce(f.text_bytes,0),a.document_id IS NOT NULL FROM checkpoint_files f LEFT JOIN file_assets a ON a.document_id=f.document_id WHERE f.checkpoint_id=$1 ORDER BY f.file_id`, id)
 	if err != nil {
 		return cp, manifest, nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var file CheckpointFile
-		err = rows.Scan(&file.FileID, &file.Path, &file.Language, &file.DocumentID, &file.Sequence, &file.SnapshotID, &file.SnapshotSequence, &file.SnapshotChecksum, &file.ArtifactKey, &file.Checksum, &file.TextBytes)
+		err = rows.Scan(&file.FileID, &file.Path, &file.Language, &file.DocumentID, &file.Sequence, &file.SnapshotID, &file.SnapshotSequence, &file.SnapshotChecksum, &file.ArtifactKey, &file.Checksum, &file.TextBytes, &file.Asset)
 		if err != nil {
 			return cp, manifest, nil, err
 		}
@@ -297,11 +298,15 @@ func (a *App) verifiedFile(ctx context.Context, project, id string, file Checkpo
 	if file.ArtifactKey != checkpointKey(project, id, file.FileID) {
 		return nil, errCheckpointCorrupt
 	}
-	data, err := a.artifacts.Get(ctx, file.ArtifactKey, 262144)
+	limit := int64(262144)
+	if file.Asset {
+		limit = maxAssetBytes
+	}
+	data, err := a.artifacts.Get(ctx, file.ArtifactKey, limit)
 	if err != nil {
 		return nil, err
 	}
-	if checksum(data) != file.Checksum || len(data) != file.TextBytes || !utf8.Valid(data) {
+	if checksum(data) != file.Checksum || len(data) != file.TextBytes || (!file.Asset && !utf8.Valid(data)) {
 		return nil, errCheckpointCorrupt
 	}
 	return data, nil
@@ -358,10 +363,15 @@ func (a *App) downloadCheckpointFile(w http.ResponseWriter, r *http.Request) {
 				checkpointError(w, err)
 				return
 			}
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("Cache-Control", "no-store")
-			w.Header().Set("Content-Disposition", `attachment; filename="`+fileID+`.txt"`)
+			name := file.Path
+			if index := strings.LastIndexByte(name, '/'); index >= 0 {
+				name = name[index+1:]
+			}
+			media := "text/plain; charset=utf-8"
+			if file.Asset {
+				media = http.DetectContentType(data)
+			}
+			assetHeaders(w, name, media, data, false)
 			w.WriteHeader(200)
 			_, _ = w.Write(data)
 			return
@@ -502,6 +512,7 @@ func (a *App) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 	}
 	prepared := map[string]preparedDocument{}
 	total := 0
+	assetTotal := 0
 	for _, entry := range manifest.Tree {
 		if entry.Kind != "file" {
 			continue
@@ -511,19 +522,27 @@ func (a *App) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 			checkpointError(w, errCheckpointCorrupt)
 			return
 		}
+		content := string(text)
+		size := len(text)
+		if entry.StorageKind == "asset" {
+			assetTotal += len(text)
+			content = ""
+			size = 0
+		} else {
+			total += len(text)
+		}
 		var output struct {
 			State  string `json:"encoded_state"`
 			Vector string `json:"state_vector"`
 		}
-		err = a.internalCheckpoint(r.Context(), "prepare", map[string]string{"text": string(text)}, &output)
+		err = a.internalCheckpoint(r.Context(), "prepare", map[string]string{"text": content}, &output)
 		state, e1 := base64.StdEncoding.DecodeString(output.State)
 		vector, e2 := base64.StdEncoding.DecodeString(output.Vector)
 		if err != nil || e1 != nil || e2 != nil || len(state) == 0 || len(state) > 2<<20 || len(vector) == 0 || len(vector) > 64<<10 {
 			writeError(w, 503, "RESTORE_PREPARATION_FAILED", "Fresh document preparation failed; current project is unchanged")
 			return
 		}
-		prepared[entry.ID] = preparedDocument{state, vector, len(text)}
-		total += len(text)
+		prepared[entry.ID] = preparedDocument{state, vector, size}
 	}
 	tx, version, err = a.checkpointTx(r.Context(), project, session, true, true)
 	if err != nil {
@@ -541,7 +560,7 @@ func (a *App) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 		treeDBError(w, err)
 		return
 	}
-	if total > sourceLimit {
+	if total > sourceLimit || assetTotal > maxProjectAssetBytes {
 		writeError(w, 409, "LIMIT_EXCEEDED", "Captured source exceeds current project limit")
 		return
 	}
@@ -580,6 +599,11 @@ func (a *App) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 			sum := sha256.Sum256(value.state)
 			_, err = tx.Exec(r.Context(), `WITH snapshot AS (INSERT INTO document_snapshots(document_id,through_sequence,encoded_state,state_vector,checksum) VALUES($1,0,$2,$3,$4) RETURNING id) UPDATE documents SET snapshot_id=(SELECT id FROM snapshot) WHERE id=$1`, document, value.state, value.vector, sum[:])
 			documentID = &document
+			if err == nil && entry.StorageKind == "asset" {
+				data := texts[entry.ID]
+				sum := sha256.Sum256(data)
+				_, err = tx.Exec(r.Context(), `INSERT INTO file_assets(document_id,data,media_type,checksum) VALUES($1,$2,$3,$4)`, document, data, http.DetectContentType(data), sum[:])
+			}
 		}
 		if err == nil {
 			_, err = tx.Exec(r.Context(), `UPDATE files SET parent_id=$3,name=$4,language=$5,current_document_id=$6,generation=$7,tombstoned_at=NULL WHERE id=$1 AND project_id=$2`, entry.ID, project, entry.ParentID, entry.Name, entry.Language, documentID, generation+1)

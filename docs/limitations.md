@@ -12,7 +12,7 @@ Yjs candidate/replay/encoding work is isolated and bounded. Recorded Phase 04 ti
 
 Phase 06 implements checkpoint capture/materialization/preview/restore and actual restore/offline-draft acceptance. Previous state is durably captured in the replacement transaction, but its preview depends on successful independent materialization. Failed uploads remain private/incomplete and need owner/editor retry; abandoned claims wait up to five minutes for takeover. Checkpoint inputs/logs/artifacts are retained without pruning or an administrative repair UI. Lists show the latest 100 checkpoints. Phase 09 verifies isolated local backup recovery; long storage outages, source-volume destruction, off-host disaster recovery and quota-scale materialization remain unmeasured. MinIO uses pinned upstream source because former official image pulls were rejected. See the current Phase 09 gate below.
 
-Live GitHub OAuth credentials are now configured; the real authorization redirect is verified, but manual callback/session/logout acceptance remains pending. OAuth fixtures and independently seeded owner/editor/viewer sessions test auth behavior without live provider credentials. Local HTTP/Compose credentials are development-only. The Windows compiler still cannot build Go race tests; Linux race verification is tracked separately in implementation status. No production-readiness or capacity claim is made.
+Live GitHub sign-in is now user-confirmed after fixing issuer-bearing callbacks. Automated live session/protected-read/logout acceptance remains pending. OAuth fixtures and independently seeded owner/editor/viewer sessions test auth behavior without live provider credentials. Local HTTP/Compose credentials are development-only. The Windows compiler still cannot build Go race tests; Linux race verification is tracked separately in implementation status. No production-readiness or capacity claim is made.
 
 Phase 07 execution is a restricted authenticated private demo on the explicit designated Docker environment. Base Compose leaves Run/Output unavailable, and execution-enabled production mode is rejected. One runner agent is supported; no scaling, public hostile-code boundary, package installation or interactive shell. Docker shares a host kernel and the agent alone has host-runtime authority; dedicated execution hosts plus gVisor/microVM isolation require a separate public release gate. Bounded local Python/JavaScript/resource/crash tests do not establish sustained fairness, daemon outages, host loss or backup readiness. Inputs/artifacts/output events remain retained without pruning. Expired/uncertain attempts fail rather than re-execute; a new explicit Run key is required. Exit 124 is reserved for timed_out, including a program choosing that exit code. The browser Run view currently belongs to the open workspace; authorized API events can be resumed using job ID and after/Last-Event-ID. Live OAuth and all earlier retention/outage/capacity/backup limitations remain.
 
@@ -32,6 +32,25 @@ The review does not establish a public execution or production release boundary.
 
 Phase 09 adds private metrics, manual sampled spans and sentinel redaction checks. Debug traces have bounded local log retention; no long-term trace backend, notification delivery or production monitoring gate is established. HTTP metrics include streaming/connection lifetimes; candidate worker heap is not process RSS. Browser rendering timings are paint-opportunity approximations. Short seeded 5-editor/expanded-room workloads include observed rejections/retries and exact durable convergence, but do not establish sustained hostile fairness, WAN latency, high ceilings, quota-scale replay or production capacity. Slow-reader recovery does not saturate the full send-byte ceiling.
 
-The jobs-death drill kills the actual checkpoint/search process at fixture-scoped database publication barriers and verifies recovery after accelerated claim expiry; it does not measure the natural five-minute/30-second wait. Backup restores a local consistent PostgreSQL dump and cold MinIO clone into scratch services and checks acknowledged text/artifact download/fresh generations. Its actual result is in status; off-host encrypted retention/PITR, host destruction and disaster RPO/RTO remain unverified. Live OAuth callback/session/logout remains pending despite configured credentials. Windows race compilation remains blocked separately from Linux checks.
+The jobs-death drill kills the actual checkpoint/search process at fixture-scoped database publication barriers and verifies recovery after accelerated claim expiry; it does not measure the natural five-minute/30-second wait. Backup restores a local consistent PostgreSQL dump and cold MinIO clone into scratch services and checks acknowledged text/artifact download/fresh generations. Its actual result is in status; off-host encrypted retention/PITR, host destruction and disaster RPO/RTO remain unverified. Live GitHub sign-in is user-confirmed; automated live session/logout acceptance remains pending. Windows race compilation remains blocked separately from Linux checks.
 
 Monaco uses LF before binding for shared LF offset mapping on Windows. Raw clients introducing CRLF/mixed-EOL text are not covered by this regression and are not claimed as verified editor interoperability. All browser pre-transaction/device/eviction, undo-reset, admission-delay, corrupt-history repair, retained-storage/pruning, long-outage, execution daemon/host-loss and public sandbox limits continue. Phase 10 is not started.
+
+The 13 October development workspace extension adds separate persistent local
+environments with package downloads and interactive terminals. Its scope and
+limits are in [development workspaces](development-workspaces.md). These do not
+change the restricted runner's standard-library templates. Workspace source edits
+do not automatically enter Yjs; Sync explicitly replaces the working copy from a
+saved checkpoint. Workspace volumes have no byte quota, network access is enabled,
+and Docker remains a private local boundary. Language servers, debugger controls
+and application previews are subsequent work.
+
+File import now accepts every extension and preserves binary/non-UTF-8/large-file
+bytes as immutable assets. Limits are 25 MiB per file, 100 MiB per import/active
+project assets, plus the existing 10 MiB editable source and 200-entry limits.
+Images in PNG/JPEG/GIF/WebP have previews; other formats have original downloads.
+Asset generations are retained in PostgreSQL and checkpoint artifacts and copied
+to development workspaces. Assets are read-only in the collaborative text editor;
+no archive extraction, antivirus scanning, arbitrary document rendering or asset
+replacement editor is claimed. Historical generations/artifacts remain retained
+without pruning. The legacy captured runner remains text-only.

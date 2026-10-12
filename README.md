@@ -7,11 +7,18 @@ checkpoints, version-aware search and opt-in private Python/JavaScript execution
 separates implementation, current acceptance, historical evidence and limitations.
 No optional Phase 10 services are implemented.
 
+The private [development workspace extension](docs/development-workspaces.md)
+adds file/folder import, persistent Python/Node/TypeScript/C++/Java/Go environments,
+dependency/build controls and separate browser terminals. Start it with
+`./scripts/start-workspaces.ps1`, then open Development workspace in a project.
+Install dependencies there and use Run workspace; the older restricted checkpoint
+runner keeps its original standard-library-only templates and limits.
+
 The 8 October local acceptance evidence is under
 [docs/measurements/local-demo-20261008](docs/measurements/local-demo-20261008).
-Live OAuth has configured credentials and a verified authorization redirect;
-manual GitHub authentication/callback/session/logout acceptance remains pending.
-Do not describe the complete portfolio login demo as verified until that passes.
+Live GitHub sign-in was confirmed by the user after the callback issuer fix.
+The earlier automated interactive session/logout acceptance timed out and has
+not been rerun successfully; its historical evidence remains separate.
 Neither local checks nor Docker execution establish production readiness or a
 public hostile-code sandbox.
 
@@ -63,7 +70,7 @@ need any missing migrations in order; check before applying them:
 docker compose --env-file .env -f infra/compose/compose.yaml exec -T postgres psql -U cce -d cce -c 'SELECT version FROM schema_migrations ORDER BY version'
 ```
 
-The current database has eight stamps. Apply only missing SQL files from
+The current database has nine stamps, including original-byte file assets. Apply only missing SQL files from
 `db/migrations` via the mounted `/canonical-migrations` path with
 `psql -v ON_ERROR_STOP=1 -f ...`; do not replay installed migrations or erase a
 volume. The least-privilege development worker login is provisioned by the local
@@ -124,6 +131,12 @@ verifies GitHub redirect/state/PKCE and the real callback/session/protected read
 logout, and never logs credentials, cookie values, authorization codes or identity.
 It does not automate GitHub authentication or consent. Seeded sessions and OAuth
 provider fixtures establish other acceptance, not live GitHub login.
+
+For `OAUTH_INVALID`, start again from the homepage in the same browser; do not
+open the callback directly or reuse a completed callback. GitHub may return
+`code`, `state` and an optional `iss`. The API validates `iss` exactly against
+`https://github.com/login/oauth` instead of rejecting the valid three-parameter
+response. Unknown/duplicate parameters and incorrect issuers still fail closed.
 
 ## Four-minute demo
 

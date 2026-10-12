@@ -2,6 +2,14 @@
 
 GitHub.com OAuth authorization code flow uses one use random state, PKCE S256 and exact configured callback. The Go server exchanges code, requests only login identity scope, discards unused provider tokens, and issues a random application session. PostgreSQL stores a hash of the session token, expiry and revocation. Production cookies are Secure, HttpOnly and SameSite. Mutating cookie requests require explicit CSRF/origin validation. Browser localStorage and WebSocket query strings never hold long lived credentials.
 
+Successful OAuth callbacks require exactly one `code` and `state`; an optional
+RFC 9207 `iss` is accepted only once and must exactly equal
+`https://github.com/login/oauth`, GitHub.com's published issuer. Unknown/duplicate
+parameters, malformed encoding and incorrect issuers are rejected before state
+consumption/token exchange. Browser binding, state expiry/one-use and PKCE remain
+required; issuer never selects a token endpoint. Legacy callbacks without `iss`
+remain supported. See [GitHub discovery documentation](https://docs.github.com/en/apps/github-authentication-discovery-endpoints).
+
 | Action | Owner | Editor | Viewer |
 |---|---|---|---|
 | Read active source, history, search, presence | yes | yes | yes |

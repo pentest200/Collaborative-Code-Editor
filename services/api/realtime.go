@@ -32,7 +32,8 @@ func (a *App) accessDocument(ctx context.Context, session Session, documentID st
 		JOIN projects p ON p.id=f.project_id AND p.lifecycle_state='active'
 		JOIN project_members m ON m.project_id=p.id AND m.user_id=$2
 		JOIN sessions s ON s.id=$3 AND s.user_id=m.user_id AND s.revoked_at IS NULL AND s.expires_at>now()
-		WHERE doc.id=$1 AND f.current_document_id=doc.id AND f.tombstoned_at IS NULL AND f.kind='file' AND doc.generation=f.generation`,
+		WHERE doc.id=$1 AND f.current_document_id=doc.id AND f.tombstoned_at IS NULL AND f.kind='file' AND doc.generation=f.generation
+    AND NOT EXISTS(SELECT 1 FROM file_assets a WHERE a.document_id=doc.id)`,
 		documentID, session.UserID, session.ID).Scan(&d.ProjectID, &d.FileID, &d.Generation, &d.Role)
 	return d, err
 }

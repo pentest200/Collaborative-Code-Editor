@@ -1,5 +1,7 @@
 FROM golang:1.27.1-bookworm AS build
 WORKDIR /src
+COPY services/api/go.mod services/api/go.sum ./
+RUN go mod download
 COPY services/api ./
 RUN CGO_ENABLED=0 go build -trimpath -o /api .
 

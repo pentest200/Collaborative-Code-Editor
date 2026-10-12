@@ -84,7 +84,9 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     await page.getByRole("tab", { name: "main.ts" }).waitFor();
     await page.getByRole("button", { name: "Download visible draft" }).waitFor();
     await page.locator(".monaco-editor").waitFor();
-    assert.equal(await page.getByRole("region", { name: "Output panel" }).getByText("Unavailable").count(), 1);
+    await page.getByRole("button", { name: "Toggle bottom panel", exact: true }).click();
+    await page.getByRole("heading", { name: "Execution unavailable" }).waitFor();
+    await page.getByRole("button", { name: "Close bottom panel", exact: true }).click();
     await page.getByRole("button", { name: "New file" }).click();
     const form = page.getByRole("form", { name: "File tree action" });
     await form.getByLabel("Name").fill("utils.py");
@@ -122,6 +124,8 @@ test("workspace has semantic controls, role limits, and a single editor while sw
     await viewer.setViewportSize({ width: 390, height: 844 });
     // Monaco's automatic layout uses ResizeObserver; inspect the settled frame.
     await viewer.waitForFunction(() => document.documentElement.scrollWidth <= window.innerWidth);
+    assert.equal(await viewer.getByRole("navigation", { name: "Project files" }).isVisible(), false);
+    await viewer.getByRole("button", { name: "Explorer", exact: true }).click();
     assert.equal(await viewer.getByRole("navigation", { name: "Project files" }).isVisible(), true);
     assert.equal(await viewer.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "narrow layout should fit the viewport");
     await viewer.screenshot({ path: resolve(artifacts, "workspace-narrow.png"), fullPage: true });

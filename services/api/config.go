@@ -8,6 +8,8 @@ import (
 )
 
 type Config struct {
+	WorkspaceOrigin   string
+	WorkspaceToken    string
 	RunnerToken       string
 	RunnerListen      string
 	Environment       string
@@ -31,6 +33,8 @@ type Config struct {
 
 func loadConfig() (Config, error) {
 	c := Config{
+		WorkspaceOrigin:   os.Getenv("WORKSPACE_INTERNAL_ORIGIN"),
+		WorkspaceToken:    os.Getenv("WORKSPACE_INTERNAL_TOKEN"),
 		RunnerToken:       os.Getenv("RUNNER_INTERNAL_TOKEN"),
 		RunnerListen:      envOr("RUNNER_CONTROL_LISTEN", "127.0.0.1:8082"),
 		Environment:       os.Getenv("APP_ENV"),
@@ -51,6 +55,15 @@ func loadConfig() (Config, error) {
 	}
 	if c.Environment != "development" && c.Environment != "production" {
 		return c, errors.New("APP_ENV must be development or production")
+	}
+	if (c.WorkspaceOrigin == "") != (c.WorkspaceToken == "") {
+		return c, errors.New("workspace origin and token must be configured together")
+	}
+	if c.WorkspaceToken != "" {
+		internal, err := url.Parse(c.WorkspaceOrigin)
+		if c.Environment != "development" || len(c.WorkspaceToken) < 32 || err != nil || internal.Scheme != "http" || internal.Host == "" || internal.Path != "" || internal.RawQuery != "" || internal.User != nil {
+			return c, errors.New("workspaces require a private development HTTP origin and token of at least 32 bytes")
+		}
 	}
 	if c.RunnerToken != "" && (c.Environment != "development" || len(c.RunnerToken) < 32) {
 		return c, errors.New("execution requires development/private-demo mode and a runner token of at least 32 bytes")
